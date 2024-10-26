@@ -18,7 +18,6 @@ class GoToGoal(Node):
         self.cmd_pub = self.create_publisher(Twist, '/cmd_vel', 10)
         self.odom_sub = self.create_subscription(Odometry, '/odom', self.odom_callback, 10)
         self.obstacle_sub = self.create_subscription(Point, '/object_range', self.object_range_callback, 10)
-        self.waypoints_sub = self.create_subscription(Point, '/waypoints', self.waypoints_callback, 10)
         
         self.current_state = GO_TO_GOAL
         self.current_position = Point()
@@ -31,7 +30,7 @@ class GoToGoal(Node):
         self.globalPos = Point()
         self.globalAng = 0.0
 
-        self.waypoints = []
+        self.waypoints = [(1.5, 0.0), (1.5, 1.4), (0.0, 1.4)]
         self.current_waypoint_idx = 0
         self.goal_position = Point()
 
