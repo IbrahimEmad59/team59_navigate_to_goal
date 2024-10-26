@@ -20,6 +20,9 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            "get_object_range=team59_navigate_to_goal.get_object_range:main",
+            "go_to_goal=team59_navigate_to_goal.go_to_goal:main",
+            "waypoints_loader=team59_object_follower.waypoints_loader:main",          
         ],
     },
 )
