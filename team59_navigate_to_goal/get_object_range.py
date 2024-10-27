@@ -4,12 +4,20 @@ from rclpy.node import Node
 from sensor_msgs.msg import LaserScan
 from geometry_msgs.msg import Point
 import numpy as np
+from rclpy.qos import QoSProfile, QoSDurabilityPolicy, QoSReliabilityPolicy, QoSHistoryPolicy
 
 class GetObjectRange(Node):
     def __init__(self):
         super().__init__('get_object_range')
+        
+        #Set up QoS Profiles for passing images over WiFi
+        image_qos_profile = QoSProfile(depth=5)
+        image_qos_profile.history = QoSHistoryPolicy.KEEP_LAST
+        image_qos_profile.durability = QoSDurabilityPolicy.VOLATILE 
+        image_qos_profile.reliability = QoSReliabilityPolicy.BEST_EFFORT 
+        
         self.obstacle_pub = self.create_publisher(Point, '/object_range', 10)
-        self.scan_sub = self.create_subscription(LaserScan, '/scan', self.get_closest_obstacle, 10)
+        self.scan_sub = self.create_subscription(LaserScan, '/scan', self.get_closest_obstacle, image_qos_profile)
 
     def get_closest_obstacle(self, data):
         # Get ranges from LIDAR scan

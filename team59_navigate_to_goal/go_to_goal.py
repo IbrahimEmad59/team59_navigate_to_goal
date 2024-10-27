@@ -53,9 +53,13 @@ class GoToGoal(Node):
         self.globalPos.x = Mrot.item((0, 0)) * position.x + Mrot.item((0, 1)) * position.y - self.Init_pos.x
         self.globalPos.y = Mrot.item((1, 0)) * position.x + Mrot.item((1, 1)) * position.y - self.Init_pos.y
         self.globalAng = orientation - self.Init_ang
+        self.get_logger().info(f"Current position: ({self.globalPos.x}, {self.globalPos.y}), Heading: {self.globalAng}")
+
 
     def object_range_callback(self, data):
         self.obstacle_vector = data
+        self.obstacle_distance = math.sqrt((self.obstacle_vector.x - self.globalPos.x)**2 + (self.obstacle_vector.y - self.globalPos.y)**2)
+        self.get_logger().info(f"The obstacle distance: ({self.obstacle_distance})")
 
     def waypoints_callback(self, data):
         self.waypoints.append(data)
@@ -63,8 +67,9 @@ class GoToGoal(Node):
     def go_to_goal(self):
         goal_distance = math.sqrt((self.goal_position.x - self.globalPos.x)**2 + (self.goal_position.y - self.globalPos.y)**2)
         goal_angle = math.atan2(self.goal_position.y - self.globalPos.y, self.goal_position.x - self.globalPos.x)
+        self.get_logger().info(f"The goal distance: ({goal_distance}), Goal Heading: {goal_angle}")
 
-        if goal_distance < 0.2:
+        if self.obstacle_distance < 0.2:
             # Decide based on proximity to goal, either CW or CCW
             self.decide_wall_follow_direction()
             return
@@ -75,9 +80,7 @@ class GoToGoal(Node):
         self.cmd_pub.publish(vel_cmd)
 
     def avoid_obstacle(self):
-        obstacle_distance = math.sqrt(self.obstacle_vector.x**2 + self.obstacle_vector.y**2)
-
-        if obstacle_distance > 0.5:
+        if self.obstacle_distance > 0.5:
             self.current_state = GO_TO_GOAL
             return
 
@@ -88,7 +91,7 @@ class GoToGoal(Node):
 
     def follow_wall_clockwise(self):
         # Wall-following logic: Clockwise
-        if math.sqrt(self.obstacle_vector.x**2 + self.obstacle_vector.y**2) > 0.5:
+        if self.obstacle_distance > 0.5:
             self.current_state = GO_TO_GOAL
             return
 
