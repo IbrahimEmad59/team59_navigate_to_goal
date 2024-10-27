@@ -61,6 +61,8 @@ class ChaseObjectWithWaypoints(Node):
 
     def odom_callback(self, msg):
         """Update current position from odometry data."""
+        self.get_logger().info("Odem data reseaveed.")
+        
         self.current_x = msg.pose.pose.position.x
         self.current_y = msg.pose.pose.position.y
         # Extract yaw from quaternion (assuming 2D plane, only z-axis rotation)
@@ -82,44 +84,44 @@ class ChaseObjectWithWaypoints(Node):
 
     def navigate_to_goal(self, goal_x, goal_y):
         """Navigate to the specific goal coordinates using PID control."""
-        while True:
-            # Calculate the time delta dynamically
-            current_time = self.get_clock().now()
-            dt = (current_time - self.prev_time).nanoseconds / 1e9  # Convert nanoseconds to seconds
-            self.prev_time = current_time
+        #while True:
+        # Calculate the time delta dynamically
+        current_time = self.get_clock().now()
+        dt = (current_time - self.prev_time).nanoseconds / 1e9  # Convert nanoseconds to seconds
+        self.prev_time = current_time
 
-            # Calculate the distance and angle to the goal
-            distance = sqrt((goal_x - self.current_x) ** 2 + (goal_y - self.current_y) ** 2)
-            target_angle = atan2(goal_y - self.current_y, goal_x - self.current_x)
-            angle_error = target_angle - self.current_yaw
-            angle_error = (angle_error + pi) % (2 * pi) - pi  # Normalize angle error to [-pi, pi]
+        # Calculate the distance and angle to the goal
+        distance = sqrt((goal_x - self.current_x) ** 2 + (goal_y - self.current_y) ** 2)
+        target_angle = atan2(goal_y - self.current_y, goal_x - self.current_x)
+        angle_error = target_angle - self.current_yaw
+        angle_error = (angle_error + pi) % (2 * pi) - pi  # Normalize angle error to [-pi, pi]
 
-            self.get_logger().info(f"Distance to goal: {distance}, Angle error: {angle_error}")
+        #self.get_logger().info(f"Distance to goal: {distance}, Angle error: {angle_error}")
 
-            # Calculate PID outputs
-            angular_velocity = self.angular_pid.compute(angle_error, dt)
-            linear_velocity = self.linear_pid.compute(distance, dt)
+        # Calculate PID outputs
+        angular_velocity = self.angular_pid.compute(angle_error, dt)
+        linear_velocity = self.linear_pid.compute(distance, dt)
 
-            # Ensure the computed velocities are within the max limits
-            linear_velocity = max(min(linear_velocity, self.max_linear_velocity), -self.max_linear_velocity)
-            angular_velocity = max(min(angular_velocity, self.max_angular_velocity), -self.max_angular_velocity)
+        # Ensure the computed velocities are within the max limits
+        linear_velocity = max(min(linear_velocity, self.max_linear_velocity), -self.max_linear_velocity)
+        angular_velocity = max(min(angular_velocity, self.max_angular_velocity), -self.max_angular_velocity)
 
-            self.get_logger().info(f"The linear velocity: {linear_velocity}")
-            self.get_logger().info(f"The angular velocity: {angular_velocity}")
+        #self.get_logger().info(f"The linear velocity: {linear_velocity}")
+        #self.get_logger().info(f"The angular velocity: {angular_velocity}")
 
-            # Create Twist message with linear and angular velocity
-            twist = Twist()
-            twist.linear.x = linear_velocity
-            twist.angular.z = angular_velocity
+        # Create Twist message with linear and angular velocity
+        twist = Twist()
+        twist.linear.x = linear_velocity
+        twist.angular.z = angular_velocity
 
-            self.cmd_pub.publish(twist)
+        self.cmd_pub.publish(twist)
 
-            # Check if close enough to the waypoint
-            if distance < self.distance_tolerance:
-                self.stop()
-                self.get_logger().info(f"Reached waypoint: ({goal_x}, {goal_y})")
-                time.sleep(2)  # Wait at the waypoint
-                break
+        # Check if close enough to the waypoint
+        if distance < self.distance_tolerance:
+            self.stop()
+            self.get_logger().info(f"Reached waypoint: ({goal_x}, {goal_y})")
+            time.sleep(2)  # Wait at the waypoint
+            #break
 
     def stop(self):
         """Stop the robot."""
