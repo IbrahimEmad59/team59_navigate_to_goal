@@ -23,6 +23,7 @@ class GoToGoal(Node):
         self.current_position = Point()
         self.goal_position = Point()
         self.obstacle_vector = Point()
+        self.obstacle_distance = 0.0
 
         self.Init = True
         self.Init_ang = 0.0
