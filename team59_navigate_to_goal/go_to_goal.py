@@ -134,7 +134,7 @@ class GoToGoal(Node):
             self.get_logger().info("All waypoints reached!")
             return
 
-        self.goal_position = self.waypoints[self.current_waypoint_idx]
+        self.goal_position.x, self.goal_position.y = self.waypoints[self.current_waypoint_idx]
 
         if self.current_state == GO_TO_GOAL:
             self.go_to_goal()
