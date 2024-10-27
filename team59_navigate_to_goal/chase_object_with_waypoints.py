@@ -96,7 +96,7 @@ class ChaseObjectWithWaypoints(Node):
         angle_error = target_angle - self.current_yaw
         angle_error = (angle_error + pi) % (2 * pi) - pi  # Normalize angle error to [-pi, pi]
 
-        #self.get_logger().info(f"Distance to goal: {distance}, Angle error: {angle_error}")
+        self.get_logger().info(f"Distance to goal: {distance}, Angle error: {angle_error}")
 
         # Calculate PID outputs
         angular_velocity = self.angular_pid.compute(angle_error, dt)
