@@ -28,7 +28,7 @@ class ChaseObjectWithWaypoints(Node):
         super().__init__('chase_object_with_waypoints')
 
         # Maximum velocities (linear and angular)
-        self.max_linear_velocity = 0.22  # meters per second
+        self.max_linear_velocity = 0.1  # meters per second
         self.max_angular_velocity = 1.5  # radians per second
 
         # Initialize waypoints
@@ -103,6 +103,9 @@ class ChaseObjectWithWaypoints(Node):
             # Ensure the computed velocities are within the max limits
             linear_velocity = max(min(linear_velocity, self.max_linear_velocity), -self.max_linear_velocity)
             angular_velocity = max(min(angular_velocity, self.max_angular_velocity), -self.max_angular_velocity)
+
+            self.get_logger().info(f"The linear velocity: {linear_velocity}")
+            self.get_logger().info(f"The angular velocity: {angular_velocity}")
 
             # Create Twist message with linear and angular velocity
             twist = Twist()
