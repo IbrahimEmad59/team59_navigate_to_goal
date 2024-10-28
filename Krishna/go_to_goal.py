@@ -80,6 +80,7 @@ class GoToGoalNode(Node):
         self.globalPos.y = Mrot.item((1, 0)) * position.x + Mrot.item((1, 1)) * position.y - self.Init_pos.y
         self.globalAng = orientation - self.Init_ang
         self.get_logger().info(f"Current position: ({self.globalPos.x}, {self.globalPos.y}), Heading: {self.globalAng}")    
+        self.move_to_goal()
 
     def move_to_goal(self):
         """Main logic to move to the next waypoint."""
