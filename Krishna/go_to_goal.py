@@ -65,9 +65,6 @@ class GoToGoalNode(Node):
             self.navigate_to_goal(goal_x, goal_y)
             self.get_logger().info(f"Moving to waypoint: ({self.current_goal_index})")
 
-            # Proceed to the next waypoint after reaching the current one
-            self.current_goal_index += 1
-
     def navigate_to_goal(self, goal_x, goal_y):
         """Navigate to the specific goal coordinates using PID control."""
         # Calculate the time delta dynamically
@@ -103,7 +100,8 @@ class GoToGoalNode(Node):
         if distance < 0.1:  # Adjust threshold as necessary
             self.stop()
             self.get_logger().info(f"Reached waypoint: ({goal_x}, {goal_y})")
-            time.sleep(2)  # Wait at the waypoint
+            time.sleep(5)  # Wait at the waypoint
+            self.current_goal_index += 1  # Proceed to the next waypoint after reaching the current one
 
     def stop(self):
         """Stop the robot."""
