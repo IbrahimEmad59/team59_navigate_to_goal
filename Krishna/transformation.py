@@ -25,7 +25,7 @@ class TFNode(Node):
             self.odom_callback,
             10)
         
-        self.publisher = self.create_publisher(Odometry, '/fixed_odom', 10)
+        self.publisher = self.create_publisher(Point, '/fixed_odom', 10)
 
     def odom_callback(self, data):
         self.update_Odometry(data)
@@ -53,8 +53,9 @@ class TFNode(Node):
     
         self.get_logger().info('Transformed global pose is x:{}, y:{}, a:{}'.format(self.globalPos.x,self.globalPos.y,self.globalAng))
         
-        self.fixedOdom.pose.pose.position = self.globalPos
-        self.fixedOdom.pose.pose.orientation = self.globalAng
+        self.fixedOdom.x = self.globalPos.x
+        self.fixedOdom.y = self.globalPos.y
+        self.fixedOdom.z = self.globalAng
         self.publisher.publish(self.fixedOdom)
 
 def main(args=None):
