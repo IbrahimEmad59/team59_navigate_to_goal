@@ -94,7 +94,7 @@ class GoToGoalNode(Node):
 
     def navigate_to_goal(self, goal_x, goal_y):
         """Navigate to the specific goal coordinates using PID control."""
-        while True:
+        while self.current_goal_index < len(self.waypoints):
             # Calculate the time delta dynamically
             current_time = time.time()
             dt = current_time - self.last_time
