@@ -17,7 +17,7 @@ class TFNode(Node):
         self.Init_pos.y = 0.0
         self.Init_ang = 0.0
         self.globalPos = Point()
-        self.fixedOdom = Odometry()
+        self.fixedOdom = Point()
 
         self.odom_sub = self.create_subscription(
             Odometry,
