@@ -86,12 +86,12 @@ class GoToGoalNode(Node):
         if abs(angle_error) < 0.2:
             angular_velocity = 0.0  # No need to rotate further
         else:
-            angular_velocity = self.angular_pid.compute(angle_error, dt)
+            angular_velocity = self.angular_pid.update(angle_error, dt)
 
         if abs(distance) < 0.2:
             linear_velocity = 0.0  # No need to move forward/backward further
         else:
-            linear_velocity = self.linear_pid.compute(distance, dt)
+            linear_velocity = self.linear_pid.update(distance, dt)
 
         # Ensure the computed velocities are within the max limits
         linear_velocity = max(min(linear_velocity, self.max_linear_velocity), -self.max_linear_velocity)
