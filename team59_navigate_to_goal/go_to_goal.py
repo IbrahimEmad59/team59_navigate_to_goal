@@ -73,7 +73,7 @@ class GoToGoal(Node):
         self.goal_position.x, self.goal_position.y = self.waypoints[self.current_waypoint_idx]
 
         # Extract the distance and angle from the message
-        goal_distance = math.sqrt((self.goal_position.x - position.x)**2 + (self.goal_position.y - position.y))
+        goal_distance = math.sqrt((self.goal_position.x - position.x)**2 + (self.goal_position.y - position.y)**2)
         goal_angle = np.arctan2(self.goal_position.x, self.goal_position.y)
 
         # Get current time and compute time step
@@ -115,7 +115,8 @@ class GoToGoal(Node):
         # Publish the velocity commands
         self.cmd_pub.publish(twist)
 
-        self.current_waypoint_idx += 1
+        if math.sqrt((self.goal_position.x - position.x)**2 + (self.goal_position.y - position.y)**2) < 0.2:
+            self.current_waypoint_idx += 1
 
 
 def main(args=None):
