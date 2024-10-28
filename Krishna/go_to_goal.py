@@ -94,8 +94,8 @@ class GoToGoalNode(Node):
             linear_velocity = self.linear_pid.update(distance, dt)
 
         # Ensure the computed velocities are within the max limits
-        linear_velocity = max(min(linear_velocity, self.max_linear_velocity), -self.max_linear_velocity)
-        angular_velocity = max(min(angular_velocity, self.max_angular_velocity), -self.max_angular_velocity)
+        linear_velocity = max(min(linear_velocity, self.linear_velocity_max), -self.linear_velocity_max)
+        angular_velocity = max(min(angular_velocity, self.angular_velocity_max), -self.angular_velocity_max)
 
         self.get_logger().info(f"The linear velocity: {linear_velocity}")
         self.get_logger().info(f"The angular velocity: {angular_velocity}")
