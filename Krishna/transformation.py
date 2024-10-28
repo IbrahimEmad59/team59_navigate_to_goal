@@ -1,55 +1,61 @@
 import rclpy
 from rclpy.node import Node
+from geometry_msgs.msg import Point
 from nav_msgs.msg import Odometry
 from std_msgs.msg import Float64  # Import Float64 for yaw publishing
 from math import atan2
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSDurabilityPolicy
+import numpy as np
 
 class TFNode(Node):
     def __init__(self):
         super().__init__('tf')
-        qos_profile = QoSProfile(
-            reliability=QoSReliabilityPolicy.BEST_EFFORT,
-            durability=QoSDurabilityPolicy.VOLATILE,
-            history=rclpy.qos.QoSHistoryPolicy.KEEP_LAST,
-            depth=10
-        )
 
-        self.subscriber = self.create_subscription(
+        self.Init = True
+        self.Init_pos = Point()
+        self.Init_pos.x = 0.0
+        self.Init_pos.y = 0.0
+        self.Init_ang = 0.0
+        self.globalPos = Point()
+        self.fixedOdom = Odometry()
+
+        self.odom_sub = self.create_subscription(
             Odometry,
             '/odom',
             self.odom_callback,
-            qos_profile
-        )
+            10)
         
-        # Use Float64 message type for yaw
-        self.publisher = self.create_publisher(Float64, '/yaw', 10)
-        self.get_logger().info("TF Node initialized and waiting for odometry data...")
+        self.publisher = self.create_publisher(Odometry, '/fixed_odom', 10)
 
-    def odom_callback(self, odom_msg):
-        """Callback to handle incoming odometry data and convert quaternion to yaw."""
-        orientation_q = odom_msg.pose.pose.orientation
-        yaw = self.quaternion_to_yaw(orientation_q)
+    def odom_callback(self, data):
+        self.update_Odometry(data)
 
-        # Publish the yaw value
-        yaw_msg = Float64()
-        yaw_msg.data = yaw
-        self.publisher.publish(yaw_msg)
-        self.get_logger().info(f"Published Yaw: {yaw}")
+    def update_Odometry(self,Odom):
+        position = Odom.pose.pose.position
+        q = Odom.pose.pose.orientation
+        orientation = np.arctan2(2*(q.w*q.z+q.x*q.y),1-2*(q.y*q.y+q.z*q.z))
 
-    def quaternion_to_yaw(self, orientation_q):
-        """Convert quaternion to yaw angle."""
-        x = orientation_q.x
-        y = orientation_q.y
-        z = orientation_q.z
-        w = orientation_q.w
+        if self.Init:
+            #The initial data is stored to by subtracted to all the other values as we want to start at position (0,0) and orientation 0
+            self.Init = False
+            self.Init_ang = orientation
+            self.globalAng = self.Init_ang
+            Mrot = np.matrix([[np.cos(self.Init_ang), np.sin(self.Init_ang)],[-np.sin(self.Init_ang), np.cos(self.Init_ang)]])        
+            self.Init_pos.x = Mrot.item((0,0))*position.x + Mrot.item((0,1))*position.y
+            self.Init_pos.y = Mrot.item((1,0))*position.x + Mrot.item((1,1))*position.y
+            self.Init_pos.z = position.z
+        Mrot = np.matrix([[np.cos(self.Init_ang), np.sin(self.Init_ang)],[-np.sin(self.Init_ang), np.cos(self.Init_ang)]])        
 
-        # Calculate yaw (z-axis rotation)
-        sin_yaw = 2.0 * (w * z + x * y)
-        cos_yaw = 1.0 - 2.0 * (y * y + z * z)
-        yaw = atan2(sin_yaw, cos_yaw)
+        #We subtract the initial values
+        self.globalPos.x = Mrot.item((0,0))*position.x + Mrot.item((0,1))*position.y - self.Init_pos.x
+        self.globalPos.y = Mrot.item((1,0))*position.x + Mrot.item((1,1))*position.y - self.Init_pos.y
+        self.globalAng = orientation - self.Init_ang
+    
+        self.get_logger().info('Transformed global pose is x:{}, y:{}, a:{}'.format(self.globalPos.x,self.globalPos.y,self.globalAng))
         
-        return yaw
+        self.fixedOdom.pose.pose.position = self.globalPos
+        self.fixedOdom.pose.pose.orientation = self.globalAng
+        self.publisher.publish(self.fixedOdom)
 
 def main(args=None):
     rclpy.init(args=args)
