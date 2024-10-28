@@ -103,7 +103,7 @@ class GoToGoalNode(Node):
         # Create a twist message for motion
         twist = Twist()
         twist.linear.x = linear_velocity
-        twist.angular.z = angular_velocity
+        twist.angular.z = angular_velocity * 0.0
 
         self.publisher.publish(twist)
         
