@@ -1,168 +1,136 @@
 #!/usr/bin/env python3
+
 import rclpy
 from rclpy.node import Node
-from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist, Point
+from nav_msgs.msg import Odometry
 import math
 import numpy as np
 
-# FSM States
-GO_TO_GOAL = 0
-AVOID_OBSTACLE = 1
-FOLLOW_WALL_CLOCKWISE = 2
-FOLLOW_WALL_COUNTERCLOCKWISE = 3
+
+class PIDController:
+    def __init__(self, kp, ki, kd, output_limits=None):
+        self.kp = kp
+        self.ki = ki
+        self.kd = kd
+        self.prev_error = 0
+        self.integral = 0
+        self.output_limits = output_limits  # Min/max limits for output (if any)
+
+    def compute(self, error, dt):
+        """Compute the control signal based on the error and time step."""
+        self.integral += error * dt
+        derivative = (error - self.prev_error) / dt
+        output = self.kp * error + self.ki * self.integral + self.kd * derivative
+        self.prev_error = error
+
+        return output
 
 class GoToGoal(Node):
     def __init__(self):
         super().__init__('go_to_goal')
-        self.cmd_pub = self.create_publisher(Twist, '/cmd_vel', 10)
-        self.odom_sub = self.create_subscription(Odometry, '/odom', self.odom_callback, 10)
-        self.obstacle_sub = self.create_subscription(Point, '/object_range', self.object_range_callback, 10)
-        
-        self.current_state = GO_TO_GOAL
+
+        # Maximum velocities (linear and angular)
+        self.max_linear_velocity = 0.22  # meters per second
+        self.max_angular_velocity = 1.5  # radians per second
+
+        # Robot's current postion
         self.current_position = Point()
+
+        # Goal postion variable
         self.goal_position = Point()
-        self.obstacle_vector = Point()
-        self.obstacle_distance = 0.0
 
-        self.Init = True
-        self.Init_ang = 0.0
-        self.Init_pos = Point()
-        self.globalPos = Point()
-        self.globalAng = 0.0
-
+        # Initializing the waypoints postions
         self.waypoints = [(1.5, 0.0), (1.5, 1.4), (0.0, 1.4)]
         self.current_waypoint_idx = 0
-        self.goal_position = Point()
+        
+        # Desired distance to the object 
+        self.desired_distance = 0.2  # meter
 
-    # Odometry callback with rotation correction
+        # 5% tolerance on distance and angle
+        self.distance_tolerance = 0.05 * self.desired_distance  # 5% of the desired distance
+        self.angle_tolerance = 0.05  # 5% tolerance in radians (adjust based on your application)
+
+        # PID controllers for angular and linear control, with output limits
+        self.angular_pid = PIDController(kp=2.2, ki=0.0, kd=0.5, output_limits=(-self.max_angular_velocity, self.max_angular_velocity))
+        self.linear_pid = PIDController(kp=4.2, ki=0.0, kd=0.5, output_limits=(-self.max_linear_velocity, self.max_linear_velocity))
+
+        # Subscriber to odem (distance and angle)
+        self.odom_sub = self.create_subscription(Odometry, '/odom', self.odom_callback, 10)
+
+        # Publisher for velocity commands
+        self.cmd_pub = self.create_publisher(Twist, '/cmd_vel', 10)
+
+        # Time tracking for PID computation
+        self.prev_time = self.get_clock().now()
+
     def odom_callback(self, Odom):
+        """Callback to process the odem data."""
         position = Odom.pose.pose.position
         q = Odom.pose.pose.orientation
         orientation = np.arctan2(2*(q.w*q.z + q.x*q.y), 1 - 2*(q.y*q.y + q.z*q.z))
 
-        if self.Init:
-            self.Init = False
-            self.Init_ang = orientation
-            self.globalAng = self.Init_ang
-            Mrot = np.matrix([[np.cos(self.Init_ang), np.sin(self.Init_ang)], [-np.sin(self.Init_ang), np.cos(self.Init_ang)]])        
-            self.Init_pos.x = Mrot.item((0, 0)) * position.x + Mrot.item((0, 1)) * position.y
-            self.Init_pos.y = Mrot.item((1, 0)) * position.x + Mrot.item((1, 1)) * position.y
-            self.Init_pos.z = position.z
-
-        Mrot = np.matrix([[np.cos(self.Init_ang), np.sin(self.Init_ang)], [-np.sin(self.Init_ang), np.cos(self.Init_ang)]])        
-        self.globalPos.x = Mrot.item((0, 0)) * position.x + Mrot.item((0, 1)) * position.y - self.Init_pos.x
-        self.globalPos.y = Mrot.item((1, 0)) * position.x + Mrot.item((1, 1)) * position.y - self.Init_pos.y
-        self.globalAng = orientation - self.Init_ang
-        self.get_logger().info(f"Current position: ({self.globalPos.x}, {self.globalPos.y}), Heading: {self.globalAng}")
-
-
-    def object_range_callback(self, data):
-        self.obstacle_vector = data
-        self.obstacle_distance = math.sqrt((self.obstacle_vector.x - self.globalPos.x)**2 + (self.obstacle_vector.y - self.globalPos.y)**2)
-        self.get_logger().info(f"The obstacle distance: ({self.obstacle_distance})")
-
-    def waypoints_callback(self, data):
-        self.waypoints.append(data)
-
-    def go_to_goal(self):
-        goal_distance = math.sqrt((self.goal_position.x - self.globalPos.x)**2 + (self.goal_position.y - self.globalPos.y)**2)
-        goal_angle = math.atan2(self.goal_position.y - self.globalPos.y, self.goal_position.x - self.globalPos.x)
-        self.get_logger().info(f"The goal distance: ({goal_distance}), Goal Heading: {goal_angle}")
-
-        if self.obstacle_distance < 0.2:
-            # Decide based on proximity to goal, either CW or CCW
-            self.decide_wall_follow_direction()
-            return
-
-        vel_cmd = Twist()
-        vel_cmd.linear.x = 0.15
-        vel_cmd.angular.z = goal_angle - self.globalAng
-        self.cmd_pub.publish(vel_cmd)
-
-    def avoid_obstacle(self):
-        if self.obstacle_distance > 0.5:
-            self.current_state = GO_TO_GOAL
-            return
-
-        vel_cmd = Twist()
-        vel_cmd.linear.x = 0.0
-        vel_cmd.angular.z = 0.5
-        self.cmd_pub.publish(vel_cmd)
-
-    def follow_wall_clockwise(self):
-        # Wall-following logic: Clockwise
-        if self.obstacle_distance > 0.5:
-            self.current_state = GO_TO_GOAL
-            return
-
-        vel_cmd = Twist()
-        vel_cmd.linear.x = 0.05
-        vel_cmd.angular.z = -0.2  # Turn slightly right (CW)
-        self.cmd_pub.publish(vel_cmd)
-
-    def follow_wall_counterclockwise(self):
-        # Wall-following logic: Counterclockwise
-        if math.sqrt(self.obstacle_vector.x**2 + self.obstacle_vector.y**2) > 0.5:
-            self.current_state = GO_TO_GOAL
-            return
-
-        vel_cmd = Twist()
-        vel_cmd.linear.x = 0.05
-        vel_cmd.angular.z = 0.2  # Turn slightly left (CCW)
-        self.cmd_pub.publish(vel_cmd)
-
-    def decide_wall_follow_direction(self):
-        # Calculate the angle to the goal
-        goal_angle = math.atan2(self.goal_position.y - self.globalPos.y, self.goal_position.x - self.globalPos.x)
-
-        # Calculate the angle to the detected obstacle
-        obstacle_angle = math.atan2(self.obstacle_vector.y, self.obstacle_vector.x)
-
-        # Calculate the angle difference (in radians)
-        angle_difference = goal_angle - obstacle_angle
-
-        # Normalize the angle to the range [-pi, pi]
-        angle_difference = (angle_difference + math.pi) % (2 * math.pi) - math.pi
-
-        # Choose clockwise if the goal is to the right of the obstacle, counterclockwise otherwise
-        if angle_difference < 0:
-            self.current_state = FOLLOW_WALL_CLOCKWISE
-            self.get_logger().info("Switching to Clockwise Wall Follow")
-        else:
-            self.current_state = FOLLOW_WALL_COUNTERCLOCKWISE
-            self.get_logger().info("Switching to Counterclockwise Wall Follow")
-
-    def state_machine(self):
-        if self.current_waypoint_idx >= len(self.waypoints):
-            self.get_logger().info("All waypoints reached!")
-            return
-
         self.goal_position.x, self.goal_position.y = self.waypoints[self.current_waypoint_idx]
 
-        if self.current_state == GO_TO_GOAL:
-            self.go_to_goal()
-        elif self.current_state == AVOID_OBSTACLE:
-            self.avoid_obstacle()
-        elif self.current_state == FOLLOW_WALL_CLOCKWISE:
-            self.follow_wall_clockwise()
-        elif self.current_state == FOLLOW_WALL_COUNTERCLOCKWISE:
-            self.follow_wall_counterclockwise()
+        # Extract the distance and angle from the message
+        goal_distance = math.sqrt((self.goal_position.x - position.x)**2 + (self.goal_position.y - position.y))
+        goal_angle = np.arctan2(self.goal_position.x, self.goal_position.y)
 
-        if math.sqrt((self.goal_position.x - self.globalPos.x)**2 + (self.goal_position.y - self.globalPos.y)**2) < 0.2:
-            self.current_waypoint_idx += 1
+        # Get current time and compute time step
+        current_time = self.get_clock().now()
+        dt = (current_time - self.prev_time).nanoseconds / 1e9  # Convert nanoseconds to seconds
+        self.prev_time = current_time
+
+        # Compute angular error (we want the angle to be 0, i.e., facing the object)
+        angular_error = goal_angle
+        self.get_logger().info(f"The angular_error: {angular_error}")
+
+        # Compute linear error (we want the distance to be self.desired_distance)
+        linear_error = self.desired_distance - goal_distance
+        self.get_logger().info(f"The linear_error: {linear_error}")
+
+        # Check if the errors are within tolerance
+        if abs(angular_error) < self.angle_tolerance:
+            angular_velocity = 0.0  # No need to rotate further
+        else:
+            angular_velocity = self.angular_pid.compute(angular_error, dt)
+
+        if abs(linear_error) < self.distance_tolerance:
+            linear_velocity = 0.0  # No need to move forward/backward further
+        else:
+            linear_velocity = self.linear_pid.compute(linear_error, dt)
+
+        # Ensure the computed velocities are within the max limits
+        linear_velocity = max(min(linear_velocity, self.max_linear_velocity), -self.max_linear_velocity)
+        angular_velocity = max(min(angular_velocity, self.max_angular_velocity), -self.max_angular_velocity)
+
+        self.get_logger().info(f"The linear velocity: {linear_velocity}")
+        self.get_logger().info(f"The angular velocity: {angular_velocity}")
+
+        # Create Twist message with linear and angular velocity
+        twist = Twist()
+        twist.linear.x = -linear_velocity  # Forward/backward velocity
+        twist.angular.z = angular_velocity  # Rotational velocity
+
+        # Publish the velocity commands
+        self.cmd_pub.publish(twist)
+
+        self.current_waypoint_idx += 1
+
 
 def main(args=None):
     rclpy.init(args=args)
-    node = GoToGoal()
-    rate = node.create_rate(10)  # 10 Hz
-    while rclpy.ok():
-        rclpy.spin_once(node)
-        node.state_machine()
-        rate.sleep()
 
-    node.destroy_node()
+    # Create the node
+    chase_object_node = GoToGoal()
+
+    # Spin to keep the node running
+    rclpy.spin(chase_object_node)
+
+    # Cleanup when shutting down
+    chase_object_node.destroy_node()
     rclpy.shutdown()
+
 
 if __name__ == '__main__':
     main()
