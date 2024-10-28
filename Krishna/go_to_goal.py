@@ -75,6 +75,9 @@ class GoToGoalNode(Node):
             current_time = time.time()
             dt = current_time - self.last_time
             self.last_time = current_time
+            
+            self.get_logger().info(f"Current x: ({self.current_x}) the goal is {goal_x}")
+
 
             # Calculate the distance and angle to the goal
             distance = sqrt((goal_x - self.current_x) ** 2 + (goal_y - self.current_y) ** 2)
