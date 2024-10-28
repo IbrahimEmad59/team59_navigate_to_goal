@@ -41,7 +41,7 @@ class GoToGoalNode(Node):
 
         # Movement parameters
         self.linear_velocity_max = 0.1  # Max linear velocity (m/s)
-        self.angular_velocity_max = 2.4   # Max angular velocity (rad/s)
+        self.angular_velocity_max = 1.5   # Max angular velocity (rad/s)
 
         # PID controllers for linear and angular motion
         self.linear_pid = PIDController(kp=1.0, ki=0.0, kd=0.0)  # Tune these parameters
@@ -82,17 +82,28 @@ class GoToGoalNode(Node):
         self.get_logger().info(f"Distance to waypoint is: ({distance})")
         self.get_logger().info(f"The angle to waypoint is: ({target_angle})")
 
-        # Calculate PID outputs
-        angular_velocity = self.angular_pid.update(angle_error, dt)
-        linear_velocity = self.linear_pid.update(distance, dt)
+        # Check if the errors are within tolerance
+        if abs(angle_error) < 0.2:
+            angular_velocity = 0.0  # No need to rotate further
+        else:
+            angular_velocity = self.angular_pid.compute(angle_error, dt)
 
-        # Dynamically adjust linear velocity as the robot approaches the goal
-        dynamic_linear_velocity = max(0.05, min(self.linear_velocity_max, linear_velocity))
+        if abs(distance) < 0.2:
+            linear_velocity = 0.0  # No need to move forward/backward further
+        else:
+            linear_velocity = self.linear_pid.compute(distance, dt)
+
+        # Ensure the computed velocities are within the max limits
+        linear_velocity = max(min(linear_velocity, self.max_linear_velocity), -self.max_linear_velocity)
+        angular_velocity = max(min(angular_velocity, self.max_angular_velocity), -self.max_angular_velocity)
+
+        self.get_logger().info(f"The linear velocity: {linear_velocity}")
+        self.get_logger().info(f"The angular velocity: {angular_velocity}")
 
         # Create a twist message for motion
         twist = Twist()
-        twist.linear.x = dynamic_linear_velocity if abs(angle_error) < 0.2 else 0.0  # Only move forward if facing the goal
-        twist.angular.z = max(-self.angular_velocity_max, min(angular_velocity, self.angular_velocity_max))
+        twist.linear.x = linear_velocity
+        twist.angular.z = angular_velocity
 
         self.publisher.publish(twist)
         
