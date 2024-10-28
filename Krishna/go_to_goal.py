@@ -81,11 +81,14 @@ class GoToGoalNode(Node):
         self.get_logger().info(f"Distance to waypoint is: ({distance})")
         self.get_logger().info(f"The angle to waypoint is: ({target_angle})")
 
+        if angle_error > np.pi:
+            angle_error -= 2*np.pi
+
         # Check if the errors are within tolerance
         if abs(angle_error) < 0.2:
             angular_velocity = 0.0  # No need to rotate further
         else:
-            angular_velocity = self.angular_pid.update(angle_error, dt)
+            angular_velocity = self.angular_pid.update(angle_error + 0.3, dt)
 
         if abs(distance) < 0.2:
             linear_velocity = 0.0  # No need to move forward/backward further
@@ -107,7 +110,7 @@ class GoToGoalNode(Node):
         self.publisher.publish(twist)
         
         # Check if close enough to the waypoint
-        if distance < 0.2 and self.current_goal_index < 2:  # Adjust threshold as necessary
+        if distance < 0.05 and self.current_goal_index < 2:  # Adjust threshold as necessary
             self.stop()
             self.get_logger().info(f"Reached waypoint: ({goal_x}, {goal_y})")
             time.sleep(5)  # Wait at the waypoint
