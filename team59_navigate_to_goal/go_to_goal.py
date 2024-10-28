@@ -31,7 +31,7 @@ class GoToGoal(Node):
         super().__init__('go_to_goal')
 
         # Maximum velocities (linear and angular)
-        self.max_linear_velocity = 0.22  # meters per second
+        self.max_linear_velocity = 0.1  # meters per second
         self.max_angular_velocity = 1.5  # radians per second
 
         # Robot's current postion
@@ -74,7 +74,7 @@ class GoToGoal(Node):
 
         # Extract the distance and angle from the message
         goal_distance = math.sqrt((self.goal_position.x - position.x)**2 + (self.goal_position.y - position.y)**2)
-        goal_angle = np.arctan2(self.goal_position.x, self.goal_position.y)
+        goal_angle = np.arctan2(self.goal_position.x - position.x, self.goal_position.y - position.y)
 
         # Get current time and compute time step
         current_time = self.get_clock().now()
@@ -89,16 +89,8 @@ class GoToGoal(Node):
         linear_error = self.desired_distance - goal_distance
         self.get_logger().info(f"The linear_error: {linear_error}")
 
-        # Check if the errors are within tolerance
-        if abs(angular_error) < self.angle_tolerance:
-            angular_velocity = 0.0  # No need to rotate further
-        else:
-            angular_velocity = self.angular_pid.compute(angular_error, dt)
-
-        if abs(linear_error) < self.distance_tolerance:
-            linear_velocity = 0.0  # No need to move forward/backward further
-        else:
-            linear_velocity = self.linear_pid.compute(linear_error, dt)
+        self.get_logger().info(f"The actual linear velocity: {linear_velocity}")
+        self.get_logger().info(f"The actual angular velocity: {angular_velocity}")
 
         # Ensure the computed velocities are within the max limits
         linear_velocity = max(min(linear_velocity, self.max_linear_velocity), -self.max_linear_velocity)
