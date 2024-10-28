@@ -70,42 +70,40 @@ class GoToGoalNode(Node):
 
     def navigate_to_goal(self, goal_x, goal_y):
         """Navigate to the specific goal coordinates using PID control."""
-        while self.current_goal_index < len(self.waypoints):
-            # Calculate the time delta dynamically
-            current_time = time.time()
-            dt = current_time - self.last_time
-            self.last_time = current_time
-            
-            self.get_logger().info(f"Current x: ({self.current_x}) the goal is {goal_x}")
+        # Calculate the time delta dynamically
+        current_time = time.time()
+        dt = current_time - self.last_time
+        self.last_time = current_time
+        
+        self.get_logger().info(f"Current x: ({self.current_x}) the goal is {goal_x}")
 
 
-            # Calculate the distance and angle to the goal
-            distance = sqrt((goal_x - self.current_x) ** 2 + (goal_y - self.current_y) ** 2)
-            target_angle = atan2(goal_y - self.current_y, goal_x - self.current_x)
-            angle_error = target_angle - self.current_yaw
-            self.get_logger().info(f"Distance to waypoint is: ({distance})")
-            self.get_logger().info(f"The angle to waypoint is: ({target_angle})")
+        # Calculate the distance and angle to the goal
+        distance = sqrt((goal_x - self.current_x) ** 2 + (goal_y - self.current_y) ** 2)
+        target_angle = atan2(goal_y - self.current_y, goal_x - self.current_x)
+        angle_error = target_angle - self.current_yaw
+        self.get_logger().info(f"Distance to waypoint is: ({distance})")
+        self.get_logger().info(f"The angle to waypoint is: ({target_angle})")
 
-            # Calculate PID outputs
-            angular_velocity = self.angular_pid.update(angle_error, dt)
-            linear_velocity = self.linear_pid.update(distance, dt)
+        # Calculate PID outputs
+        angular_velocity = self.angular_pid.update(angle_error, dt)
+        linear_velocity = self.linear_pid.update(distance, dt)
 
-            # Dynamically adjust linear velocity as the robot approaches the goal
-            dynamic_linear_velocity = max(0.05, min(self.linear_velocity_max, linear_velocity))
+        # Dynamically adjust linear velocity as the robot approaches the goal
+        dynamic_linear_velocity = max(0.05, min(self.linear_velocity_max, linear_velocity))
 
-            # Create a twist message for motion
-            twist = Twist()
-            twist.linear.x = dynamic_linear_velocity if abs(angle_error) < 0.2 else 0.0  # Only move forward if facing the goal
-            twist.angular.z = max(-self.angular_velocity_max, min(angular_velocity, self.angular_velocity_max))
+        # Create a twist message for motion
+        twist = Twist()
+        twist.linear.x = dynamic_linear_velocity if abs(angle_error) < 0.2 else 0.0  # Only move forward if facing the goal
+        twist.angular.z = max(-self.angular_velocity_max, min(angular_velocity, self.angular_velocity_max))
 
-            self.publisher.publish(twist)
-            
-            # Check if close enough to the waypoint
-            if distance < 0.1:  # Adjust threshold as necessary
-                self.stop()
-                self.get_logger().info(f"Reached waypoint: ({goal_x}, {goal_y})")
-                time.sleep(2)  # Wait at the waypoint
-                break
+        self.publisher.publish(twist)
+        
+        # Check if close enough to the waypoint
+        if distance < 0.1:  # Adjust threshold as necessary
+            self.stop()
+            self.get_logger().info(f"Reached waypoint: ({goal_x}, {goal_y})")
+            time.sleep(2)  # Wait at the waypoint
 
     def stop(self):
         """Stop the robot."""
