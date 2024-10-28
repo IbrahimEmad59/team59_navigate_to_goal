@@ -56,111 +56,13 @@ class GoToGoalNode(Node):
         self.current_x = Odom.x
         self.current_y = Odom.y
         self.current_yaw = Odom.z
-        #self.move_to_goal()
-        goal_x, goal_y = self.waypoints[self.current_goal_index]
-        #self.navigate_to_goal(goal_x, goal_y)
-        self.get_logger().info(f"Moving to waypoint: ({self.current_goal_index})")
-        # Calculate the time delta dynamically
-        current_time = time.time()
-        dt = current_time - self.last_time
-        self.last_time = current_time
-        
-        self.get_logger().info(f"Current x: ({self.current_x}) the goal is {goal_x}")
-
-
-        # Calculate the distance and angle to the goal
-        distance = sqrt((goal_x - self.current_x) ** 2 + (goal_y - self.current_y) ** 2)
-        target_angle = atan2(goal_y - self.current_y, goal_x - self.current_x)
-        angle_error = target_angle - self.current_yaw
-        self.get_logger().info(f"Distance to waypoint is: ({distance})")
-        self.get_logger().info(f"The angle to waypoint is: ({target_angle})")
-
-        # Check if the errors are within tolerance
-        if abs(angle_error) < 0.2:
-            angular_velocity = 0.0  # No need to rotate further
-        else:
-            angular_velocity = self.angular_pid.update(angle_error, dt)
-
-        if abs(distance) < 0.2:
-            linear_velocity = 0.0  # No need to move forward/backward further
-        else:
-            linear_velocity = self.linear_pid.update(distance, dt)
-
-        # Ensure the computed velocities are within the max limits
-        linear_velocity = max(min(linear_velocity, self.linear_velocity_max), -self.linear_velocity_max)
-        angular_velocity = max(min(angular_velocity, self.angular_velocity_max), -self.angular_velocity_max)
-
-        self.get_logger().info(f"The linear velocity: {linear_velocity}")
-        self.get_logger().info(f"The angular velocity: {angular_velocity}")
-
-        # Create a twist message for motion
-        twist = Twist()
-        twist.linear.x = linear_velocity
-        twist.angular.z = angular_velocity * 0.0
-
-        self.publisher.publish(twist)
-        
-        # Check if close enough to the waypoint
-        if distance < 0.3 and self.current_goal_index < 2:  # Adjust threshold as necessary
-            self.stop()
-            self.get_logger().info(f"Reached waypoint: ({goal_x}, {goal_y})")
-            time.sleep(10)  # Wait at the waypoint
-            self.current_goal_index += 1  # Proceed to the next waypoint after reaching the current one
-
+        self.move_to_goal()
 
     def move_to_goal(self):
         """Main logic to move to the next waypoint."""
-        while self.current_goal_index < len(self.waypoints):
-            goal_x, goal_y = self.waypoints[self.current_goal_index]
-            #self.navigate_to_goal(goal_x, goal_y)
-            self.get_logger().info(f"Moving to waypoint: ({self.current_goal_index})")
-            # Calculate the time delta dynamically
-            current_time = time.time()
-            dt = current_time - self.last_time
-            self.last_time = current_time
-            
-            self.get_logger().info(f"Current x: ({self.current_x}) the goal is {goal_x}")
-
-
-            # Calculate the distance and angle to the goal
-            distance = sqrt((goal_x - self.current_x) ** 2 + (goal_y - self.current_y) ** 2)
-            target_angle = atan2(goal_y - self.current_y, goal_x - self.current_x)
-            angle_error = target_angle - self.current_yaw
-            self.get_logger().info(f"Distance to waypoint is: ({distance})")
-            self.get_logger().info(f"The angle to waypoint is: ({target_angle})")
-
-            # Check if the errors are within tolerance
-            if abs(angle_error) < 0.2:
-                angular_velocity = 0.0  # No need to rotate further
-            else:
-                angular_velocity = self.angular_pid.update(angle_error, dt)
-
-            if abs(distance) < 0.2:
-                linear_velocity = 0.0  # No need to move forward/backward further
-            else:
-                linear_velocity = self.linear_pid.update(distance, dt)
-
-            # Ensure the computed velocities are within the max limits
-            linear_velocity = max(min(linear_velocity, self.linear_velocity_max), -self.linear_velocity_max)
-            angular_velocity = max(min(angular_velocity, self.angular_velocity_max), -self.angular_velocity_max)
-
-            self.get_logger().info(f"The linear velocity: {linear_velocity}")
-            self.get_logger().info(f"The angular velocity: {angular_velocity}")
-
-            # Create a twist message for motion
-            twist = Twist()
-            twist.linear.x = linear_velocity
-            twist.angular.z = angular_velocity * 0.0
-
-            self.publisher.publish(twist)
-            
-            # Check if close enough to the waypoint
-            if distance < 0.1:  # Adjust threshold as necessary
-                self.stop()
-                self.get_logger().info(f"Reached waypoint: ({goal_x}, {goal_y})")
-                time.sleep(5)  # Wait at the waypoint
-                self.current_goal_index += 1  # Proceed to the next waypoint after reaching the current one
-
+        goal_x, goal_y = self.waypoints[self.current_goal_index]
+        self.navigate_to_goal(goal_x, goal_y)
+        self.get_logger().info(f"Moving to waypoint: ({self.current_goal_index})")
 
     def navigate_to_goal(self, goal_x, goal_y):
         """Navigate to the specific goal coordinates using PID control."""
@@ -200,12 +102,12 @@ class GoToGoalNode(Node):
         # Create a twist message for motion
         twist = Twist()
         twist.linear.x = linear_velocity
-        twist.angular.z = angular_velocity * 0.0
+        twist.angular.z = angular_velocity
 
         self.publisher.publish(twist)
         
         # Check if close enough to the waypoint
-        if distance < 0.1:  # Adjust threshold as necessary
+        if distance < 0.2 and self.current_goal_index < 2:  # Adjust threshold as necessary
             self.stop()
             self.get_logger().info(f"Reached waypoint: ({goal_x}, {goal_y})")
             time.sleep(5)  # Wait at the waypoint
