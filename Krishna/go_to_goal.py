@@ -87,7 +87,7 @@ class GoToGoalNode(Node):
         self.globalPos.y = Mrot.item((1,0))*position.x + Mrot.item((1,1))*position.y - self.Init_pos.y
         self.globalAng = orientation - self.Init_ang
     
-        self.get_logger().info('Transformed global pose is x:{}, y:{}, a:{}'.format(self.globalPos.x,self.globalPos.y,self.globalAng))
+        #self.get_logger().info('Transformed global pose is x:{}, y:{}, a:{}'.format(self.globalPos.x,self.globalPos.y,self.globalAng))
 
     def move_to_goal(self):
         """Main logic to move to the next waypoint."""
@@ -111,13 +111,9 @@ class GoToGoalNode(Node):
             distance = sqrt((goal_x - self.globalPos.x) ** 2 + (goal_y - self.globalPos.y) ** 2)
             target_angle = atan2(goal_y - self.globalPos.y, goal_x - self.globalPos.x)
             angle_error = target_angle - self.globalAng
-            #self.get_logger().info(f"Distance to waypoint is: ({distance})")
-            #self.get_logger().info(f"The angle to waypoint is: ({target_angle})")
+            self.get_logger().info(f"Distance to waypoint is: ({distance})")
+            self.get_logger().info(f"The angle to waypoint is: ({target_angle})")
 
-            # Convert angle from [-pi, pi] to [0, 2pi]
-            # if angle_error < 0:
-            #    angle_error += 2 * np.pi
-            
             # Calculate PID outputs
             angular_velocity = self.angular_pid.update(angle_error, dt)
             linear_velocity = self.linear_pid.update(distance, dt)
