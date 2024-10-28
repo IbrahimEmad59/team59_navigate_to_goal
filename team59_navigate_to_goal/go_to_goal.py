@@ -75,6 +75,9 @@ class GoToGoal(Node):
         q = Odom.pose.pose.orientation
         orientation = np.arctan2(2*(q.w*q.z + q.x*q.y), 1 - 2*(q.y*q.y + q.z*q.z))
 
+        # The current potion of the robot
+        self.get_logger().info(f"The current location is {(position.x, position.y)}")
+
         # Set goal position from waypoints
         self.goal_position.x, self.goal_position.y = self.waypoints[self.current_waypoint_idx]
 
@@ -117,6 +120,7 @@ class GoToGoal(Node):
 
         # Move to the next waypoint if within range
         if goal_distance < self.desired_distance and self.current_waypoint_idx < len(self.waypoints) - 1:
+            self.get_logger().info(f"Waypoints {self.current_waypoint_idx} have reached!!")
             self.current_waypoint_idx += 1
 
 
