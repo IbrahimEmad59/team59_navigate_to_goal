@@ -28,7 +28,7 @@ class GoToGoalNode(Node):
         super().__init__('go_to_goal')
 
         self.publisher = self.create_publisher(Twist, '/cmd_vel', 10)
-        self.create_subscription(Float64, '/yaw', self.yaw_callback, 10)
+        #self.create_subscription(Float64, '/yaw', self.yaw_callback, 10)
         self.create_subscription(Odometry, '/odom', self.odom_callback, 10)
 
         # Initialize waypoints
@@ -38,9 +38,12 @@ class GoToGoalNode(Node):
         # Movement parameters
         self.linear_velocity_max = 0.1  # Max linear velocity (m/s)
         self.angular_velocity_max = 2.4   # Max angular velocity (rad/s)
-        self.globalPos.yaw = 0.0
-        self.globalPos.x = 0.0
-        self.globalPos.y = 0.0
+
+        self.Init = True
+        self.Init_ang = 0.0
+        self.Init_pos = Point()
+        self.globalPos = Point()
+        self.globalAng = 0.0
 
         # PID controllers for linear and angular motion
         self.linear_pid = PIDController(kp=1.0, ki=0.0, kd=0.0)  # Tune these parameters
@@ -52,16 +55,17 @@ class GoToGoalNode(Node):
         self.get_logger().info("Go To Goal Node initialized and starting to move to waypoints...")
         self.move_to_goal()
 
-    def yaw_callback(self, yaw_msg):
-        """Update the current yaw from the TF node."""
-        self.globalPos.yaw = yaw_msg.data
-        self.get_logger().info(f"The current yaw: ({self.globalPos.yaw})")
+    #def yaw_callback(self, yaw_msg):
+    #   """Update the current yaw from the TF node."""
+    #    self.globalPos.yaw = yaw_msg.data
+    #    self.get_logger().info(f"The current yaw: ({self.globalPos.yaw})")
 
 
     def odom_callback(self, odom_msg):
         position = odom_msg.pose.pose.position
         q = odom_msg.pose.pose.orientation
         orientation = np.arctan2(2*(q.w*q.z + q.x*q.y), 1 - 2*(q.y*q.y + q.z*q.z))
+        self.get_logger().info(f"The current yaw: ({orientation})")
 
         if self.Init:
             self.Init = False
@@ -99,7 +103,7 @@ class GoToGoalNode(Node):
             # Calculate the distance and angle to the goal
             distance = sqrt((goal_x - self.globalPos.x) ** 2 + (goal_y - self.globalPos.y) ** 2)
             target_angle = atan2(goal_y - self.globalPos.y, goal_x - self.globalPos.x)
-            angle_error = target_angle - self.globalPos.yaw
+            angle_error = target_angle - self.globalAng
             self.get_logger().info(f"Distance to waypoint is: ({distance})")
             self.get_logger().info(f"The angle to waypoint is: ({target_angle})")
 
