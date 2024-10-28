@@ -89,6 +89,17 @@ class GoToGoal(Node):
         linear_error = self.desired_distance - goal_distance
         self.get_logger().info(f"The linear_error: {linear_error}")
 
+        # Check if the errors are within tolerance
+        if abs(angular_error) < self.angle_tolerance:
+            angular_velocity = 0.0  # No need to rotate further
+        else:
+            angular_velocity = self.angular_pid.compute(angular_error, dt)
+
+        if abs(linear_error) < self.distance_tolerance:
+            linear_velocity = 0.0  # No need to move forward/backward further
+        else:
+            linear_velocity = self.linear_pid.compute(linear_error, dt)
+
         self.get_logger().info(f"The actual linear velocity: {linear_velocity}")
         self.get_logger().info(f"The actual angular velocity: {angular_velocity}")
 
