@@ -31,9 +31,10 @@ class GoToGoalNode(Node):
         #self.create_subscription(Odometry, '/odom', self.odom_callback, 10)
         self.odom_sub = self.create_subscription(
             Odometry,
-            '/odom',
+            '/fixed_odom',
             self.odom_callback,
             10)
+        
         # Initialize waypoints
         self.waypoints = [(1.5, 0.0), (1.5, 1.4), (0.0, 1.4)]
         self.current_goal_index = 0
@@ -41,13 +42,6 @@ class GoToGoalNode(Node):
         # Movement parameters
         self.linear_velocity_max = 0.1  # Max linear velocity (m/s)
         self.angular_velocity_max = 2.4   # Max angular velocity (rad/s)
-        
-        self.Init = True
-        self.Init_pos = Point()
-        self.Init_pos.x = 0.0
-        self.Init_pos.y = 0.0
-        self.Init_ang = 0.0
-        self.globalPos = Point()
 
         # PID controllers for linear and angular motion
         self.linear_pid = PIDController(kp=1.0, ki=0.0, kd=0.0)  # Tune these parameters
@@ -58,36 +52,10 @@ class GoToGoalNode(Node):
 
         self.get_logger().info("Go To Goal Node initialized and starting to move to waypoints...")
 
-    #def yaw_callback(self, yaw_msg):
-    #   """Update the current yaw from the TF node."""
-    #    self.globalPos.yaw = yaw_msg.data
-    #    self.get_logger().info(f"The current yaw: ({self.globalPos.yaw})")
-
-    def odom_callback(self, data):
-        self.update_Odometry(data)
-
-    def update_Odometry(self,Odom):
-        position = Odom.pose.pose.position
-        q = Odom.pose.pose.orientation
-        orientation = np.arctan2(2*(q.w*q.z+q.x*q.y),1-2*(q.y*q.y+q.z*q.z))
-
-        if self.Init:
-            #The initial data is stored to by subtracted to all the other values as we want to start at position (0,0) and orientation 0
-            self.Init = False
-            self.Init_ang = orientation
-            self.globalAng = self.Init_ang
-            Mrot = np.matrix([[np.cos(self.Init_ang), np.sin(self.Init_ang)],[-np.sin(self.Init_ang), np.cos(self.Init_ang)]])        
-            self.Init_pos.x = Mrot.item((0,0))*position.x + Mrot.item((0,1))*position.y
-            self.Init_pos.y = Mrot.item((1,0))*position.x + Mrot.item((1,1))*position.y
-            self.Init_pos.z = position.z
-        Mrot = np.matrix([[np.cos(self.Init_ang), np.sin(self.Init_ang)],[-np.sin(self.Init_ang), np.cos(self.Init_ang)]])        
-
-        #We subtract the initial values
-        self.globalPos.x = Mrot.item((0,0))*position.x + Mrot.item((0,1))*position.y - self.Init_pos.x
-        self.globalPos.y = Mrot.item((1,0))*position.x + Mrot.item((1,1))*position.y - self.Init_pos.y
-        self.globalAng = orientation - self.Init_ang
-    
-        self.get_logger().info('Transformed global pose is x:{}, y:{}, a:{}'.format(self.globalPos.x,self.globalPos.y,self.globalAng))
+    def odom_callback(self, Odom):
+        self.current_x = Odom.pose.pose.position.x
+        self.current_y = Odom.pose.pose.position.y
+        self.current_yaw = Odom.pose.pose.orientation
 
     def move_to_goal(self):
         """Main logic to move to the next waypoint."""
@@ -108,9 +76,9 @@ class GoToGoalNode(Node):
             self.last_time = current_time
 
             # Calculate the distance and angle to the goal
-            distance = sqrt((goal_x - self.globalPos.x) ** 2 + (goal_y - self.globalPos.y) ** 2)
-            target_angle = atan2(goal_y - self.globalPos.y, goal_x - self.globalPos.x)
-            angle_error = target_angle - self.globalAng
+            distance = sqrt((goal_x - self.current_x) ** 2 + (goal_y - self.current_y) ** 2)
+            target_angle = atan2(goal_y - self.current_y, goal_x - self.current_x)
+            angle_error = target_angle - self.current_yaw
             self.get_logger().info(f"Distance to waypoint is: ({distance})")
             self.get_logger().info(f"The angle to waypoint is: ({target_angle})")
 
