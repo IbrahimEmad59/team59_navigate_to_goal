@@ -30,7 +30,7 @@ class GoToGoalNode(Node):
         self.publisher = self.create_publisher(Twist, '/cmd_vel', 10)
         #self.create_subscription(Odometry, '/odom', self.odom_callback, 10)
         self.odom_sub = self.create_subscription(
-            Odometry,
+            Point,
             '/fixed_odom',
             self.odom_callback,
             10)
@@ -53,9 +53,9 @@ class GoToGoalNode(Node):
         self.get_logger().info("Go To Goal Node initialized and starting to move to waypoints...")
 
     def odom_callback(self, Odom):
-        self.current_x = Odom.pose.pose.position.x
-        self.current_y = Odom.pose.pose.position.y
-        self.current_yaw = Odom.pose.pose.orientation
+        self.current_x = Odom.x
+        self.current_y = Odom.y
+        self.current_yaw = Odom.z
 
     def move_to_goal(self):
         """Main logic to move to the next waypoint."""
