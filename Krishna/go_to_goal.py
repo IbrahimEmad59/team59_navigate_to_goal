@@ -102,7 +102,7 @@ class GoToGoalNode(Node):
             self.publisher.publish(twist)
             
             # Check if close enough to the waypoint
-            if distance < 0.1:  # Adjust threshold as necessary
+            if distance < 0.2:  # Adjust threshold as necessary
                 self.stop()
                 self.get_logger().info(f"Reached waypoint: ({goal_x}, {goal_y})")
                 time.sleep(5)  # Wait at the waypoint
