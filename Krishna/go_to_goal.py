@@ -40,12 +40,12 @@ class GoToGoalNode(Node):
         self.current_goal_index = 0
 
         # Movement parameters
-        self.linear_velocity_max = 0.2  # Max linear velocity (m/s)
-        self.angular_velocity_max = 2.1   # Max angular velocity (rad/s)
+        self.linear_velocity_max = 0.1  # Max linear velocity (m/s)
+        self.angular_velocity_max = 1.5   # Max angular velocity (rad/s)
 
         # PID controllers for linear and angular motion
-        self.linear_pid = PIDController(kp=4.2, ki=0.0, kd=0.5)  # Tune these parameters
-        self.angular_pid = PIDController(kp=2.2, ki=0.0, kd=0.5)  # Tune these parameters
+        self.linear_pid = PIDController(kp=1.0, ki=0.0, kd=0.0)  # Tune these parameters
+        self.angular_pid = PIDController(kp=3.0, ki=0.0, kd=0.5)  # Tune these parameters
 
         # Time tracking for dynamic dt (time delta)
         self.last_time = time.time()
