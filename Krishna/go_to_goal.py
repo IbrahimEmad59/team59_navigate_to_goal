@@ -53,7 +53,6 @@ class GoToGoalNode(Node):
         self.last_time = time.time()
 
         self.get_logger().info("Go To Goal Node initialized and starting to move to waypoints...")
-        self.move_to_goal()
 
     #def yaw_callback(self, yaw_msg):
     #   """Update the current yaw from the TF node."""
@@ -104,8 +103,8 @@ class GoToGoalNode(Node):
             distance = sqrt((goal_x - self.globalPos.x) ** 2 + (goal_y - self.globalPos.y) ** 2)
             target_angle = atan2(goal_y - self.globalPos.y, goal_x - self.globalPos.x)
             angle_error = target_angle - self.globalAng
-            self.get_logger().info(f"Distance to waypoint is: ({distance})")
-            self.get_logger().info(f"The angle to waypoint is: ({target_angle})")
+            #self.get_logger().info(f"Distance to waypoint is: ({distance})")
+            #self.get_logger().info(f"The angle to waypoint is: ({target_angle})")
 
             # Convert angle from [-pi, pi] to [0, 2pi]
             # if angle_error < 0:
