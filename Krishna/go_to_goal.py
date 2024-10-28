@@ -51,11 +51,12 @@ class GoToGoalNode(Node):
         self.last_time = time.time()
 
         self.get_logger().info("Go To Goal Node initialized and starting to move to waypoints...")
-
+        
     def odom_callback(self, Odom):
         self.current_x = Odom.x
         self.current_y = Odom.y
         self.current_yaw = Odom.z
+        self.move_to_goal()
 
     def move_to_goal(self):
         """Main logic to move to the next waypoint."""
