@@ -90,7 +90,7 @@ class GoToGoal(Node):
         angular_error = (angular_error + math.pi) % (2 * math.pi) - math.pi  # Normalize error
 
         # Compute linear error (desired distance to goal)
-        linear_error = 1.5 - self.desired_distance
+        linear_error = 1.5 - position.x
 
         # Get current time and compute time step
         current_time = self.get_clock().now()
@@ -107,6 +107,8 @@ class GoToGoal(Node):
             linear_velocity = 0.0
         else:
             linear_velocity = self.linear_pid.compute(linear_error, dt)
+        
+        self.get_logger().info(f"linear_velocity: {linear_velocity}")
 
         # Limit velocities
         linear_velocity = max(min(linear_velocity, self.max_linear_velocity), -self.max_linear_velocity)
