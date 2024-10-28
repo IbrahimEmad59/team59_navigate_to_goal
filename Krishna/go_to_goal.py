@@ -124,7 +124,8 @@ class GoToGoalNode(Node):
             twist.angular.z = max(-self.angular_velocity_max, min(angular_velocity, self.angular_velocity_max))
 
             self.publisher.publish(twist)
-
+            
+            self.odom_callback()
             # Check if close enough to the waypoint
             if distance < 0.1:  # Adjust threshold as necessary
                 self.stop()
