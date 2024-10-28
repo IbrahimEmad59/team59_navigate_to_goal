@@ -60,9 +60,9 @@ class GoToGoalNode(Node):
     #    self.get_logger().info(f"The current yaw: ({self.globalPos.yaw})")
 
 
-    def odom_callback(self, odom_msg):
-        position = odom_msg.pose.pose.position
-        q = odom_msg.pose.pose.orientation
+    def odom_callback(self, Odom):
+        position = Odom.pose.pose.position
+        q = Odom.pose.pose.orientation
         orientation = np.arctan2(2*(q.w*q.z + q.x*q.y), 1 - 2*(q.y*q.y + q.z*q.z))
         self.get_logger().info(f"The current yaw: ({orientation})")
 
@@ -80,7 +80,7 @@ class GoToGoalNode(Node):
         self.globalPos.y = Mrot.item((1, 0)) * position.x + Mrot.item((1, 1)) * position.y - self.Init_pos.y
         self.globalAng = orientation - self.Init_ang
         self.get_logger().info(f"Current position: ({self.globalPos.x}, {self.globalPos.y}), Heading: {self.globalAng}")    
-        self.move_to_goal()
+        #self.move_to_goal()
 
     def move_to_goal(self):
         """Main logic to move to the next waypoint."""
@@ -125,7 +125,6 @@ class GoToGoalNode(Node):
 
             self.publisher.publish(twist)
             
-            self.odom_callback()
             # Check if close enough to the waypoint
             if distance < 0.1:  # Adjust threshold as necessary
                 self.stop()
