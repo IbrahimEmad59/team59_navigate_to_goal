@@ -3,9 +3,7 @@ import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist, Point
 from sensor_msgs.msg import LaserScan
-from std_msgs.msg import Float64MultiArray
-from rclpy.qos import qos_profile_sensor_data
-import numpy as np  # To handle NaN filtering
+import numpy as np  # For NaN filtering
 
 class Bug2Controller(Node):
     def __init__(self):
@@ -22,7 +20,7 @@ class Bug2Controller(Node):
             LaserScan,
             '/scan',  # Laser scan for obstacle detection
             self.scan_callback,
-            qos_profile=qos_profile_sensor_data)
+            10)
 
         # Publisher
         self.velocity_publisher = self.create_publisher(Twist, '/cmd_vel', 10)
@@ -31,6 +29,8 @@ class Bug2Controller(Node):
         self.left_dist = float('inf')
         self.front_dist = float('inf')
         self.right_dist = float('inf')
+        self.leftfront_dist = float('inf')
+        self.rightfront_dist = float('inf')
         self.dist_thresh_obs = 0.25  # Threshold to trigger wall following
         self.forward_speed = 0.1  # Speed when moving forward
         self.turning_speed = 0.3  # Speed when turning
@@ -44,6 +44,13 @@ class Bug2Controller(Node):
         self.current_yaw = 0.0
         self.goal_x = None
         self.goal_y = None
+
+        # Start and goal line (BUG2 specific)
+        self.start_x = None
+        self.start_y = None
+        self.start_goal_line_calculated = False
+        self.start_goal_slope = None
+        self.start_goal_intercept = None
 
         # Waypoints (goal positions)
         self.waypoints = [(1.5, 0.0), (1.5, 1.4), (0.0, 1.4)]  # Add your waypoints here
@@ -60,6 +67,45 @@ class Bug2Controller(Node):
         self.current_y = msg.y
         self.current_yaw = msg.z
 
+        # Calculate the start-to-goal line if not already done
+        if not self.start_goal_line_calculated:
+            self.calculate_start_goal_line()
+
+    def calculate_start_goal_line(self):
+        """
+        Calculate the slope and intercept of the line connecting the start position and the goal.
+        This is used in the BUG2 algorithm to determine when the robot can return to the go-to-goal mode.
+        """
+        if not self.waypoints:
+            return
+
+        # Set the start point as the robot's initial position
+        self.start_x = self.current_x
+        self.start_y = self.current_y
+
+        # Set the goal point as the first waypoint
+        self.goal_x, self.goal_y = self.waypoints[self.current_waypoint_index]
+
+        # Calculate the slope and intercept of the line
+        if self.goal_x != self.start_x:
+            self.start_goal_slope = (self.goal_y - self.start_y) / (self.goal_x - self.start_x)
+            self.start_goal_intercept = self.start_y - self.start_goal_slope * self.start_x
+        else:
+            self.start_goal_slope = float('inf')  # Vertical line
+
+        self.start_goal_line_calculated = True
+
+    def on_start_goal_line(self):
+        """
+        Check if the robot is on the start-to-goal line.
+        If the line is vertical (infinite slope), check if the x-coordinate matches.
+        """
+        if self.start_goal_slope == float('inf'):
+            return abs(self.current_x - self.start_x) < 0.05  # Allow small tolerance for floating-point error
+        else:
+            expected_y = self.start_goal_slope * self.current_x + self.start_goal_intercept
+            return abs(self.current_y - expected_y) < 0.05  # Allow small tolerance
+
     def scan_callback(self, msg):
         """
         Callback to process laser scan data and handle obstacle detection.
@@ -69,17 +115,19 @@ class Bug2Controller(Node):
         scan_ranges = np.array(msg.ranges)
         scan_ranges = np.where(np.isnan(scan_ranges), float('inf'), scan_ranges)  # Replace NaNs with infinity
 
-        # Update relevant distances (left, front, right)
-        self.left_dist = scan_ranges[135]  # Left sensor value (adjust index based on your sensor setup)
-        self.front_dist = scan_ranges[0]  # Front sensor value
-        self.right_dist = scan_ranges[45]  # Right sensor value
+        # LDS-02 Lidar: Adjust indices based on 360-degree field of view
+        self.left_dist = scan_ranges[270]  # Left (270 degrees)
+        self.front_dist = scan_ranges[180]  # Front (180 degrees)
+        self.right_dist = scan_ranges[90]   # Right (90 degrees)
+        self.leftfront_dist = scan_ranges[225]  # Left-front diagonal (225 degrees)
+        self.rightfront_dist = scan_ranges[135]  # Right-front diagonal (135 degrees)
 
         # Mode switching logic
         if self.robot_mode == "go to goal mode" and self.obstacle_detected():
             # Switch to wall following mode if an obstacle is detected
             self.robot_mode = "wall following mode"
-        elif self.robot_mode == "wall following mode" and not self.obstacle_detected():
-            # Switch back to go to goal mode if obstacle is cleared
+        elif self.robot_mode == "wall following mode" and not self.obstacle_detected() and self.on_start_goal_line():
+            # Switch back to go to goal mode if obstacle is cleared and we are back on the start-goal line
             self.robot_mode = "go to goal mode"
 
         # Continue in the current mode
@@ -92,7 +140,11 @@ class Bug2Controller(Node):
         """
         Return True if an obstacle is detected within the threshold distance.
         """
-        return self.front_dist < self.dist_thresh_obs or self.right_dist < self.dist_thresh_obs or self.left_dist < self.dist_thresh_obs
+        return (self.front_dist < self.dist_thresh_obs or 
+                self.rightfront_dist < self.dist_thresh_obs or 
+                self.leftfront_dist < self.dist_thresh_obs or 
+                self.right_dist < self.dist_thresh_obs or 
+                self.left_dist < self.dist_thresh_obs)
 
     def go_to_goal(self):
         """
@@ -128,6 +180,7 @@ class Bug2Controller(Node):
             # If the goal is reached, move to the next waypoint
             self.get_logger().info(f"Waypoint {self.current_waypoint_index} reached.")
             self.current_waypoint_index += 1
+            self.start_goal_line_calculated = False  # Recalculate start-goal line for the new waypoint
 
         self.velocity_publisher.publish(msg)
 
