@@ -122,6 +122,8 @@ class Bug2Controller(Node):
         self.right_dist = scan_ranges[int(270/360 * len(msg.ranges))]   # Right (270 degrees)
         self.leftfront_dist = scan_ranges[int(45/360 * len(msg.ranges))]  # Left-front diagonal (45 degrees)
         self.rightfront_dist = scan_ranges[int(315/360 * len(msg.ranges))]  # Right-front diagonal (315 degrees)
+        self.rightback_dist = scan_ranges[int(225/360 * len(msg.ranges))]  # Right-back diagonal (225 degrees)
+        self.leftback_dist = scan_ranges[int(135/360 * len(msg.ranges))]  # Left-back diagonal (135 degrees)
 
         # Mode switching logic
         if self.robot_mode == "go to goal mode" and self.obstacle_detected():
@@ -276,7 +278,7 @@ class Bug2Controller(Node):
         #     self.wall_following_state = "turn left"
         #     msg.angular.z = self.turning_speed
              
-        elif self.leftfront_dist < d and self.front_dist < d and self.rightfront_dist > d:
+        elif self.leftfront_dist > d and self.front_dist > d and self.rightfront_dist > d and self.rightback_dist > d + 0.2:
             self.wall_following_state = "turn right"
             msg.angular.z = -self.turning_speed
              
