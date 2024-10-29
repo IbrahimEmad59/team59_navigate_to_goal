@@ -125,6 +125,8 @@ class Bug2Controller(Node):
         self.rightfront_dist = scan_ranges[int(315/360 * len(msg.ranges))]  # Right-front diagonal (315 degrees)
         self.rightback_dist = scan_ranges[int(225/360 * len(msg.ranges))]  # Right-back diagonal (225 degrees)
         self.leftback_dist = scan_ranges[int(135/360 * len(msg.ranges))]  # Left-back diagonal (135 degrees)
+        
+        self.get_logger().info(f"Distances are [{(self.left_dist,self.leftfront_dist,self.front_dist,self.rightfront_dist,self.right_dist)}]")
 
         # Mode switching logic
         if self.robot_mode == "go to goal mode" and self.obstacle_detected():
