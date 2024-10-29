@@ -117,11 +117,11 @@ class Bug2Controller(Node):
         scan_ranges = np.where(np.isnan(scan_ranges), float('inf'), scan_ranges)  # Replace NaNs with infinity
 
         # LDS-02 Lidar: Adjust indices based on 360-degree field of view
-        self.left_dist = scan_ranges[50]  # Left (270 degrees)
-        self.front_dist = scan_ranges[0]  # Front (180 degrees)
-        self.right_dist = scan_ranges[180]   # Right (90 degrees)
-        self.leftfront_dist = scan_ranges[90]  # Left-front diagonal (225 degrees)
-        self.rightfront_dist = scan_ranges[220]  # Right-front diagonal (135 degrees)
+        self.left_dist = scan_ranges[int(90/360 * len(msg.ranges))]  # Left (50 degrees)
+        self.front_dist = scan_ranges[int(0/360 * len(msg.ranges))]  # Front (0 degrees)
+        self.right_dist = scan_ranges[int(270/360 * len(msg.ranges))]   # Right (180 degrees)
+        self.leftfront_dist = scan_ranges[int(45/360 * len(msg.ranges))]  # Left-front diagonal (90 degrees)
+        self.rightfront_dist = scan_ranges[int(315/360 * len(msg.ranges))]  # Right-front diagonal (220 degrees)
 
         # Mode switching logic
         if self.robot_mode == "go to goal mode" and self.obstacle_detected():
@@ -191,18 +191,53 @@ class Bug2Controller(Node):
         """
         msg = Twist()
 
-        if self.front_dist > self.dist_thresh_obs and self.right_dist > self.wall_following_dist:
-            # No obstacle in front, follow the wall by moving forward
+        d = self.wall_following_dist
+         
+        if self.leftfront_dist > d and self.front_dist > d and self.rightfront_dist > d:
+            self.wall_following_state = "search for wall"
             msg.linear.x = self.forward_speed
-        elif self.front_dist < self.dist_thresh_obs:
-            # Wall detected in front, turn left
+            msg.angular.z = -self.turning_speed # turn right to find wall
+             
+        elif self.leftfront_dist > d and self.front_dist < d and self.rightfront_dist > d:
+            self.wall_following_state = "turn left"
             msg.angular.z = self.turning_speed
-        elif self.right_dist < self.dist_too_close_to_wall:
-            # Too close to the wall, turn left
+             
+             
+        elif (self.leftfront_dist > d and self.front_dist > d and self.rightfront_dist < d):
+            if (self.rightfront_dist < self.dist_too_close_to_wall):
+                # Getting too close to the wall
+                self.wall_following_state = "turn left"
+                msg.linear.x = self.forward_speed
+                msg.angular.z = self.turning_speed      
+            else:           
+                # Go straight ahead
+                self.wall_following_state = "follow wall" 
+                msg.linear.x = self.forward_speed   
+                                     
+        elif self.leftfront_dist < d and self.front_dist > d and self.rightfront_dist > d:
+            self.wall_following_state = "search for wall"
+            msg.linear.x = self.forward_speed
+            msg.angular.z = -self.turning_speed # turn right to find wall
+             
+        elif self.leftfront_dist > d and self.front_dist < d and self.rightfront_dist < d:
+            self.wall_following_state = "turn left"
             msg.angular.z = self.turning_speed
+             
+        elif self.leftfront_dist < d and self.front_dist < d and self.rightfront_dist > d:
+            self.wall_following_state = "turn left"
+            msg.angular.z = self.turning_speed
+             
+        elif self.leftfront_dist < d and self.front_dist < d and self.rightfront_dist < d:
+            self.wall_following_state = "turn left"
+            msg.angular.z = self.turning_speed
+             
+        elif self.leftfront_dist < d and self.front_dist > d and self.rightfront_dist < d:
+            self.wall_following_state = "search for wall"
+            msg.linear.x = self.forward_speed
+            msg.angular.z = -self.turning_speed # turn right to find wall
+             
         else:
-            # Follow the wall by moving forward
-            msg.linear.x = self.forward_speed
+            pass
 
         self.velocity_publisher.publish(msg)
 
