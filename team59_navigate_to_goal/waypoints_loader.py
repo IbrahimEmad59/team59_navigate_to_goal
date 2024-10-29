@@ -71,7 +71,7 @@ class Bug2Controller(Node):
 
         # Update relevant distances (left, front, right)
         self.left_dist = scan_ranges[135]  # Left sensor value (adjust index based on your sensor setup)
-        self.front_dist = scan_ranges[90]  # Front sensor value
+        self.front_dist = scan_ranges[0]  # Front sensor value
         self.right_dist = scan_ranges[45]  # Right sensor value
 
         # Mode switching logic
