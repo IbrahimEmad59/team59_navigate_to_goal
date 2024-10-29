@@ -20,24 +20,25 @@ class LidarPlotter(Node):
         
         # Initialize Matplotlib figure
         self.fig, self.ax = plt.subplots()
-        self.ax.set_title("Lidar Obstacle Plot")
+        self.ax.set_title("Lidar Obstacle Plot (Distances < 2m)")
         self.ax.set_xlabel("Angle Index")
         self.ax.set_ylabel("Distance (m)")
-        self.ax.set_xlim(0, 360)
-        self.ax.set_ylim(0, 10)
-        self.line, = self.ax.plot([], [], 'b.')  # Blue dots for all ranges
+        self.ax.set_xlim(0, 360)  # Adjust according to the total number of angle indices
+        self.ax.set_ylim(0, 2)    # Only show distances up to 2 meters
+        self.line, = self.ax.plot([], [], 'b.')  # Blue dots for all ranges below 2m
         self.obstacle_lines = []
 
     def scan_callback(self, msg):
-        # Get range data
+        # Get range data and set distance threshold for filtering
         ranges = np.array(msg.ranges)
+        distance_threshold = 2.0
         
-        # Set the distance threshold for obstacles
-        distance_threshold = 1.5
-        
-        # Plot the raw range data
-        angle_indices = np.arange(len(ranges))
-        self.line.set_data(angle_indices, ranges)
+        # Filter ranges for values below the distance threshold
+        below_threshold_indices = np.where(ranges < distance_threshold)[0]
+        below_threshold_ranges = ranges[below_threshold_indices]
+
+        # Plot only the ranges below the threshold
+        self.line.set_data(below_threshold_indices, below_threshold_ranges)
 
         # Clear previous obstacle lines
         for line in self.obstacle_lines:
@@ -46,15 +47,18 @@ class LidarPlotter(Node):
 
         # Detect obstacles and interpolate lines for them
         start_idx = None
-        for i in range(len(ranges)):
-            if ranges[i] < distance_threshold:
-                if start_idx is None:
-                    start_idx = i
-            elif start_idx is not None:
+        for i in below_threshold_indices:
+            if start_idx is None:
+                start_idx = i
+            elif i != start_idx + 1:
                 # End of an obstacle segment; interpolate a line
                 end_idx = i - 1
                 self.draw_obstacle_line(ranges, start_idx, end_idx)
-                start_idx = None
+                start_idx = i
+
+        # Handle the last obstacle segment if it ends at the last index
+        if start_idx is not None:
+            self.draw_obstacle_line(ranges, start_idx, below_threshold_indices[-1])
 
         # Plot the figure with updated data
         plt.draw()
@@ -65,7 +69,7 @@ class LidarPlotter(Node):
         if start_idx == end_idx:
             return  # Skip single-point "obstacles"
 
-        # Get angles and range values for the obstacle line
+        # Get angle indices and range values for the obstacle line
         x_vals = np.linspace(start_idx, end_idx, end_idx - start_idx + 1)
         y_vals = ranges[start_idx:end_idx + 1]
         
