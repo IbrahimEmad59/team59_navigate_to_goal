@@ -136,6 +136,8 @@ class Bug2Controller(Node):
         # Continue in the current mode
         if self.robot_mode == "go to goal mode":
             self.go_to_goal()
+            self.get_logger().info(f"Robot is at {self.robot_mode}")
+
         elif self.robot_mode == "wall following mode":
             # Record the hit point  
             self.hit_point_x = self.current_x
@@ -149,11 +151,15 @@ class Bug2Controller(Node):
                 pow(self.goal_y - self.hit_point_y, 2)))) 
             
             self.follow_wall()
+            self.get_logger().info(f"Robot is at {self.robot_mode}")
+
 
     def obstacle_detected(self):
         """
         Return True if an obstacle is detected within the threshold distance.
         """
+        self.get_logger().info("Obstacle detected!")
+
         return (self.front_dist < self.dist_thresh_obs or 
                 self.rightfront_dist < self.dist_thresh_obs or 
                 self.leftfront_dist < self.dist_thresh_obs or 
@@ -257,17 +263,23 @@ class Bug2Controller(Node):
         if self.leftfront_dist > d and self.front_dist < d and self.rightfront_dist > d:
             self.wall_following_state = "turn left"
             msg.angular.z = self.turning_speed
+            self.get_logger().info(f"State is {self.wall_following_state}")
+
              
         elif (self.leftfront_dist > d and self.front_dist > d and self.rightfront_dist < d):
             if (self.rightfront_dist < self.dist_too_close_to_wall):
                 # Getting too close to the wall
                 self.wall_following_state = "turn left"
                 msg.linear.x = self.forward_speed
-                msg.angular.z = self.turning_speed      
+                msg.angular.z = self.turning_speed
+                self.get_logger().info(f"State is {self.wall_following_state}")
+      
             else:           
                 # Go straight ahead
                 self.wall_following_state = "follow wall" 
-                msg.linear.x = self.forward_speed   
+                msg.linear.x = self.forward_speed  
+                self.get_logger().info(f"State is {self.wall_following_state}")
+ 
                                      
         # elif self.leftfront_dist < d and self.front_dist > d and self.rightfront_dist > d:
         #     self.wall_following_state = "search for wall"
@@ -281,6 +293,8 @@ class Bug2Controller(Node):
         elif self.leftfront_dist > d and self.front_dist > d and self.rightfront_dist > d and self.rightback_dist > d + 0.2:
             self.wall_following_state = "turn right"
             msg.angular.z = -self.turning_speed
+            self.get_logger().info(f"State is {self.wall_following_state}")
+
              
         # elif self.leftfront_dist < d and self.front_dist < d and self.rightfront_dist < d:
         #     self.wall_following_state = "turn left"
