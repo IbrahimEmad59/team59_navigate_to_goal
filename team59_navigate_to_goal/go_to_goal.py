@@ -142,8 +142,6 @@ class Bug2Controller(Node):
             self.get_logger().info(f"Robot is at {self.robot_mode}")
 
         elif self.robot_mode == "wall following mode":
-            self.stop_robot()
-            time.sleep(2)  
             # Record the hit point  
             self.hit_point_x = self.current_x
             self.hit_point_y = self.current_y
