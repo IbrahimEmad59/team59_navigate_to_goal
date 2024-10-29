@@ -32,12 +32,12 @@ class Bug2Controller(Node):
         self.right_dist = float('inf')
         self.leftfront_dist = float('inf')
         self.rightfront_dist = float('inf')
-        self.dist_thresh_obs = 0.15  # Threshold to trigger wall following
+        self.dist_thresh_obs = 0.25  # Threshold to trigger wall following
         self.forward_speed = 0.1  # Speed when moving forward
         self.turning_speed = 1.25  # Speed when turning
-        self.wall_following_dist = 0.15  # Distance to maintain while following the wall
+        self.wall_following_dist = 0.25  # Distance to maintain while following the wall
         self.dist_too_close_to_wall = 0.15  # Minimum safe distance from the wall
-        self.goal_threshold = 0.15  # Distance threshold to consider waypoint reached
+        self.goal_threshold = 0.1  # Distance threshold to consider waypoint reached
 
         # Variables for odometry and goal seeking
         self.current_x = 0.0
@@ -256,18 +256,12 @@ class Bug2Controller(Node):
             self.wall_following_state = "turn left"
             msg.angular.z = self.turning_speed
              
-             
         elif (self.leftfront_dist > d and self.front_dist > d and self.rightfront_dist < d):
             if (self.rightfront_dist < self.dist_too_close_to_wall):
                 # Getting too close to the wall
                 self.wall_following_state = "turn left"
                 msg.linear.x = self.forward_speed
                 msg.angular.z = self.turning_speed      
-            elif (self.rightfront_dist > self.dist_too_close_to_wall):
-                # Getting too far to the wall
-                self.wall_following_state = "turn right"
-                msg.linear.x = self.forward_speed
-                msg.angular.z = -self.turning_speed  
             else:           
                 # Go straight ahead
                 self.wall_following_state = "follow wall" 
@@ -278,17 +272,17 @@ class Bug2Controller(Node):
         #     msg.linear.x = self.forward_speed
         #     msg.angular.z = -self.turning_speed # turn right to find wall
              
-        elif self.leftfront_dist > d and self.front_dist < d and self.rightfront_dist < d:
-            self.wall_following_state = "turn left"
-            msg.angular.z = self.turning_speed
+        # elif self.leftfront_dist > d and self.front_dist < d and self.rightfront_dist < d:
+        #     self.wall_following_state = "turn left"
+        #     msg.angular.z = self.turning_speed
              
         elif self.leftfront_dist < d and self.front_dist < d and self.rightfront_dist > d:
             self.wall_following_state = "turn right"
             msg.angular.z = -self.turning_speed
              
-        elif self.leftfront_dist < d and self.front_dist < d and self.rightfront_dist < d:
-            self.wall_following_state = "turn left"
-            msg.angular.z = self.turning_speed
+        # elif self.leftfront_dist < d and self.front_dist < d and self.rightfront_dist < d:
+        #     self.wall_following_state = "turn left"
+        #     msg.angular.z = self.turning_speed
              
         # elif self.leftfront_dist < d and self.front_dist > d and self.rightfront_dist < d:
         #     self.wall_following_state = "search for wall"
