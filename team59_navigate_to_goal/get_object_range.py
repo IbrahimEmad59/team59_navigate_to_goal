@@ -24,8 +24,8 @@ class GetObjectRange(Node):
         ranges = np.array(data.ranges)
         
         # Filter out invalid range readings
-        ranges = [ranges.pop(i) for i in np.isnan(ranges)]
-        
+        ranges = [x for x in ranges if not np.isnan(x)]
+
         self.get_logger().info(f"Original data: {ranges}")
         
         closest_idxs = [i for i in range(len(ranges)-1) if ranges[i] < 1 and ranges[i+1] < 1]
