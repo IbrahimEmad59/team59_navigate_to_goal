@@ -2,123 +2,89 @@
 
 import rclpy
 from rclpy.node import Node
-from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
-import matplotlib.pyplot as plt
 import numpy as np
-from math import atan2, pi, cos, sin
+import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 
-class VisualizationNode(Node):
+class LidarPlotter(Node):
     def __init__(self):
-        super().__init__('visualization_node')
-
-        # Subscriber to odometry to get the robot's position and orientation
-        self.create_subscription(Odometry, '/odom', self.odom_callback, 10)
-
-        # Subscriber to laser scan to get the obstacle information
-        self.create_subscription(LaserScan, '/scan', self.scan_callback, 10)
-
-        # Set the goal waypoint (you can adjust this or subscribe to a goal topic)
-        self.goal_x = 2.0  # Example goal x-coordinate
-        self.goal_y = 2.0  # Example goal y-coordinate
-
-        # Robot's current position and yaw
-        self.robot_x = 0.0
-        self.robot_y = 0.0
-        self.robot_yaw = 0.0
-
-        # Laser scan data (default to no obstacles)
-        self.obstacle_distance = float('inf')
-        self.obstacle_angle = 0.0
-
-        # Initialize the plot
+        super().__init__('lidar_plotter')
+        self.subscription = self.create_subscription(
+            LaserScan,
+            '/scan',
+            self.scan_callback,
+            10
+        )
+        
+        # Initialize Matplotlib figure
         self.fig, self.ax = plt.subplots()
-        self.timer = self.create_timer(0.1, self.update_plot)  # Update plot every 100ms
-
-    def odom_callback(self, msg):
-        """Callback to update robot position and yaw from odometry."""
-        self.robot_x = msg.pose.pose.position.x
-        self.robot_y = msg.pose.pose.position.y
-
-        # Extract yaw from quaternion
-        orientation_q = msg.pose.pose.orientation
-        yaw = atan2(2.0 * (orientation_q.w * orientation_q.z + orientation_q.x * orientation_q.y),
-                    1.0 - 2.0 * (orientation_q.y * orientation_q.y + orientation_q.z * orientation_q.z))
-        self.robot_yaw = yaw
-
-        self.get_logger().info(f"Robot position: ({self.robot_x}, {self.robot_y}), Yaw: {self.robot_yaw}")
+        self.ax.set_title("Lidar Obstacle Plot")
+        self.ax.set_xlabel("Angle Index")
+        self.ax.set_ylabel("Distance (m)")
+        self.ax.set_xlim(0, 360)
+        self.ax.set_ylim(0, 10)
+        self.line, = self.ax.plot([], [], 'b.')  # Blue dots for all ranges
+        self.obstacle_lines = []
 
     def scan_callback(self, msg):
-        """Callback to process the laser scan data and find the nearest obstacle."""
+        # Get range data
         ranges = np.array(msg.ranges)
-        # Filter out invalid ranges (e.g., Inf)
-        valid_ranges = ranges[np.isfinite(ranges)]
-        if len(valid_ranges) > 0:
-            self.obstacle_distance = min(valid_ranges)
-            # Get the index of the closest obstacle and its corresponding angle
-            angle_index = np.argmin(valid_ranges)
-            self.obstacle_angle = msg.angle_min + angle_index * msg.angle_increment
-            self.get_logger().info(f"Nearest obstacle: Distance = {self.obstacle_distance}, Angle = {self.obstacle_angle}")
-        else:
-            self.obstacle_distance = float('inf')
-            self.obstacle_angle = 0.0
+        
+        # Set the distance threshold for obstacles
+        distance_threshold = 1.5
+        
+        # Plot the raw range data
+        angle_indices = np.arange(len(ranges))
+        self.line.set_data(angle_indices, ranges)
 
-    def update_plot(self):
-        """Update the plot with the current goal and obstacle vectors."""
-        self.ax.clear()
+        # Clear previous obstacle lines
+        for line in self.obstacle_lines:
+            line.remove()
+        self.obstacle_lines.clear()
 
-        # Set plot limits and labels
-        self.ax.set_xlim([-3, 3])
-        self.ax.set_ylim([-3, 3])
-        self.ax.set_xlabel('X')
-        self.ax.set_ylabel('Y')
-        self.ax.set_title('Goal and Obstacle Vectors')
+        # Detect obstacles and interpolate lines for them
+        start_idx = None
+        for i in range(len(ranges)):
+            if ranges[i] < distance_threshold:
+                if start_idx is None:
+                    start_idx = i
+            elif start_idx is not None:
+                # End of an obstacle segment; interpolate a line
+                end_idx = i - 1
+                self.draw_obstacle_line(ranges, start_idx, end_idx)
+                start_idx = None
 
-        # Plot the robot's position as a point
-        self.ax.plot(self.robot_x, self.robot_y, 'bo', label='Robot Position')
-
-        # Calculate the goal vector
-        goal_vector_x = self.goal_x - self.robot_x
-        goal_vector_y = self.goal_y - self.robot_y
-
-        # Normalize and scale the goal vector for visualization
-        goal_magnitude = np.sqrt(goal_vector_x**2 + goal_vector_y**2)
-        if goal_magnitude > 0:
-            goal_vector_x /= goal_magnitude
-            goal_vector_y /= goal_magnitude
-
-        # Plot the goal vector (blue)
-        self.ax.arrow(self.robot_x, self.robot_y, goal_vector_x, goal_vector_y, head_width=0.1, head_length=0.2, fc='blue', ec='blue', label='Goal Vector')
-
-        # Calculate and plot the obstacle vector (red)
-        if self.obstacle_distance < float('inf'):
-            # Calculate the obstacle's position relative to the robot
-            obstacle_x = self.robot_x + self.obstacle_distance * cos(self.robot_yaw + self.obstacle_angle)
-            obstacle_y = self.robot_y + self.obstacle_distance * sin(self.robot_yaw + self.obstacle_angle)
-
-            # Plot the obstacle vector (red)
-            obstacle_vector_x = obstacle_x - self.robot_x
-            obstacle_vector_y = obstacle_y - self.robot_y
-            obstacle_magnitude = np.sqrt(obstacle_vector_x**2 + obstacle_vector_y**2)
-            if obstacle_magnitude > 0:
-                obstacle_vector_x /= obstacle_magnitude
-                obstacle_vector_y /= obstacle_magnitude
-            self.ax.arrow(self.robot_x, self.robot_y, obstacle_vector_x, obstacle_vector_y, head_width=0.1, head_length=0.2, fc='red', ec='red', label='Obstacle Vector')
-
-        # Add a legend
-        self.ax.legend()
-
-        # Draw the updated plot
+        # Plot the figure with updated data
         plt.draw()
-        plt.pause(0.01)  # Redraw the plot in real-time
+        plt.pause(0.001)
+
+    def draw_obstacle_line(self, ranges, start_idx, end_idx):
+        """Interpolate and draw line for detected obstacle."""
+        if start_idx == end_idx:
+            return  # Skip single-point "obstacles"
+
+        # Get angles and range values for the obstacle line
+        x_vals = np.linspace(start_idx, end_idx, end_idx - start_idx + 1)
+        y_vals = ranges[start_idx:end_idx + 1]
+        
+        # Plot a red line to represent the obstacle
+        line = Line2D(x_vals, y_vals, color='red', linewidth=2)
+        self.ax.add_line(line)
+        self.obstacle_lines.append(line)
+
 
 def main(args=None):
     rclpy.init(args=args)
-    visualization_node = VisualizationNode()
-    plt.ion()  # Enable interactive mode for real-time plotting
-    rclpy.spin(visualization_node)
-    visualization_node.destroy_node()
+    node = LidarPlotter()
+
+    # To keep matplotlib window responsive, we call `plt.show(block=False)`
+    plt.show(block=False)
+    rclpy.spin(node)
+
+    node.destroy_node()
     rclpy.shutdown()
+
 
 if __name__ == '__main__':
     main()
