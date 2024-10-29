@@ -23,9 +23,17 @@ class GetObjectRange(Node):
         # Get ranges from LIDAR scan
         ranges = np.array(data.ranges)
         
-        # Filter out invalid range readings (assuming max range of LIDAR is 3.5m)
-        ranges[np.isinf(ranges)] = 3.5
+        # Filter out invalid range readings
+        ranges = [ranges.pop(i) for i in np.isnan(ranges)]
+        
+        self.get_logger().info(f"Original data: {ranges}")
+        
+        closest_idxs = [i for i in range(len(ranges)-1) if ranges[i] < 1 and ranges[i+1] < 1]
+        closest_distances = [ranges[i] for i in closest_idxs]
 
+        self.get_logger().info(f"Close indices: {closest_idxs}")
+        self.get_logger().info(f"Close ranges: {closest_distances}")
+        
         # Find the closest obstacle
         closest_idx = np.argmin(ranges)
         closest_distance = ranges[closest_idx]
