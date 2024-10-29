@@ -1,146 +1,226 @@
-#!/usr/bin/env python3
-
+import math
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist, Point
-from nav_msgs.msg import Odometry
-import math
-import numpy as np
+from sensor_msgs.msg import LaserScan
+from rclpy.qos import qos_profile_sensor_data
+import numpy as np  # For NaN filtering
 
-
-class PIDController:
-    def __init__(self, kp, ki, kd, output_limits=None):
-        self.kp = kp
-        self.ki = ki
-        self.kd = kd
-        self.prev_error = 0
-        self.integral = 0
-        self.output_limits = output_limits
-
-    def compute(self, error, dt):
-        """Compute the control signal based on the error and time step."""
-        self.integral += error * dt
-        derivative = (error - self.prev_error) / dt
-        output = self.kp * error + self.ki * self.integral + self.kd * derivative
-        self.prev_error = error
-
-        # Apply output limits if set
-        if self.output_limits:
-            output = max(self.output_limits[0], min(output, self.output_limits[1]))
-
-        return output
-
-
-class GoToGoal(Node):
+class Bug2Controller(Node):
     def __init__(self):
-        super().__init__('go_to_goal')
+        super().__init__('bug_2_with_waypoints')
 
-        # Maximum velocities (linear and angular)
-        self.max_linear_velocity = 0.1  # meters per second
-        self.max_angular_velocity = 1.5  # radians per second
-
-        # Robot's current position
-        self.current_position = Point()
-
-        # Goal position variable
-        self.goal_position = Point()
-
-        # Initializing the waypoints
-        self.waypoints = [(1.5, 0.0), (1.5, 1.4), (0.0, 1.4)]
-        self.current_waypoint_idx = 0
+        # Subscribers
+        self.odom_subscriber = self.create_subscription(
+            Point,
+            '/fixed_odom',  # Odometry data from your transformation node
+            self.odom_callback,
+            10)
         
-        # Desired distance to the object
-        self.desired_distance = 0.2  # meter
+        self.scan_subscriber = self.create_subscription(
+            LaserScan,
+            '/scan',  # Laser scan for obstacle detection
+            self.scan_callback,
+            qos_profile=qos_profile_sensor_data)
 
-        # Tolerance settings
-        self.distance_tolerance = 0.05 * self.desired_distance  # 5% of the desired distance
-        self.angle_tolerance = 0.05  # 5% tolerance in radians
+        # Publisher
+        self.velocity_publisher = self.create_publisher(Twist, '/cmd_vel', 10)
 
-        # PID controllers for angular and linear control, with output limits
-        self.angular_pid = PIDController(kp=2.2, ki=0.0, kd=0.5, output_limits=(-self.max_angular_velocity, self.max_angular_velocity))
-        self.linear_pid = PIDController(kp=4.2, ki=0.0, kd=0.5, output_limits=(-self.max_linear_velocity, self.max_linear_velocity))
+        # Variables for obstacle avoidance
+        self.left_dist = float('inf')
+        self.front_dist = float('inf')
+        self.right_dist = float('inf')
+        self.leftfront_dist = float('inf')
+        self.rightfront_dist = float('inf')
+        self.dist_thresh_obs = 0.25  # Threshold to trigger wall following
+        self.forward_speed = 0.1  # Speed when moving forward
+        self.turning_speed = 0.3  # Speed when turning
+        self.wall_following_dist = 0.45  # Distance to maintain while following the wall
+        self.dist_too_close_to_wall = 0.15  # Minimum safe distance from the wall
+        self.goal_threshold = 0.15  # Distance threshold to consider waypoint reached
 
-        # Subscriber to odometry
-        self.odom_sub = self.create_subscription(Odometry, '/odom', self.odom_callback, 10)
+        # Variables for odometry and goal seeking
+        self.current_x = 0.0
+        self.current_y = 0.0
+        self.current_yaw = 0.0
+        self.goal_x = None
+        self.goal_y = None
 
-        # Publisher for velocity commands
-        self.cmd_pub = self.create_publisher(Twist, '/cmd_vel', 10)
+        # Start and goal line (BUG2 specific)
+        self.start_x = None
+        self.start_y = None
+        self.start_goal_line_calculated = False
+        self.start_goal_slope = None
+        self.start_goal_intercept = None
 
-        # Time tracking for PID computation
-        self.prev_time = self.get_clock().now()
+        # Waypoints (goal positions)
+        self.waypoints = [(1.5, 0.0), (1.5, 1.4), (0.0, 1.4)]  # Add your waypoints here
+        self.current_waypoint_index = 0
 
-    def odom_callback(self, Odom):
-        """Callback to process the odometry data."""
-        position = Odom.pose.pose.position
-        q = Odom.pose.pose.orientation
-        orientation = np.arctan2(2*(q.w*q.z + q.x*q.y), 1 - 2*(q.y*q.y + q.z*q.z))
+        # Modes
+        self.robot_mode = "go to goal mode"  # Can be "go to goal mode" or "wall following mode"
 
-        # The current potion of the robot
-        self.get_logger().info(f"The current location is {(position.x, position.y)}")
+    def odom_callback(self, msg):
+        """
+        Callback to update the robot's current position and orientation from odometry data.
+        """
+        self.current_x = msg.x
+        self.current_y = msg.y
+        self.current_yaw = msg.z
 
-        # Set goal position from waypoints
-        self.goal_position.x, self.goal_position.y = self.waypoints[self.current_waypoint_idx]
+        # Calculate the start-to-goal line if not already done
+        if not self.start_goal_line_calculated:
+            self.calculate_start_goal_line()
 
-        # Calculate goal distance and angle
-        goal_distance = math.sqrt((self.goal_position.x - position.x)**2 + (self.goal_position.y - position.y)**2)
-        goal_angle = np.arctan2(self.goal_position.y - position.y, self.goal_position.x - position.x)
+    def calculate_start_goal_line(self):
+        """
+        Calculate the slope and intercept of the line connecting the start position and the goal.
+        This is used in the BUG2 algorithm to determine when the robot can return to the go-to-goal mode.
+        """
+        if not self.waypoints:
+            return
 
-        # Compute angular error
-        angular_error = goal_angle - orientation
-        angular_error = (angular_error + math.pi) % (2 * math.pi) - math.pi  # Normalize error
+        # Set the start point as the robot's initial position
+        self.start_x = self.current_x
+        self.start_y = self.current_y
 
-        # Compute linear error (desired distance to goal)
-        linear_error = 1.5 - position.x
+        # Set the goal point as the first waypoint
+        self.goal_x, self.goal_y = self.waypoints[self.current_waypoint_index]
 
-        # Get current time and compute time step
-        current_time = self.get_clock().now()
-        dt = (current_time - self.prev_time).nanoseconds / 1e9  # Convert nanoseconds to seconds
-        self.prev_time = current_time
-
-        # Control calculations
-        if abs(angular_error) < self.angle_tolerance:
-            angular_velocity = 0.0
+        # Calculate the slope and intercept of the line
+        if self.goal_x != self.start_x:
+            self.start_goal_slope = (self.goal_y - self.start_y) / (self.goal_x - self.start_x)
+            self.start_goal_intercept = self.start_y - self.start_goal_slope * self.start_x
         else:
-            angular_velocity = self.angular_pid.compute(angular_error, dt)
+            self.start_goal_slope = float('inf')  # Vertical line
 
-        if abs(linear_error) < self.distance_tolerance:
-            linear_velocity = 0.0
+        self.start_goal_line_calculated = True
+
+    def on_start_goal_line(self):
+        """
+        Check if the robot is on the start-to-goal line.
+        If the line is vertical (infinite slope), check if the x-coordinate matches.
+        """
+        if self.start_goal_slope == float('inf'):
+            return abs(self.current_x - self.start_x) < 0.05  # Allow small tolerance for floating-point error
         else:
-            linear_velocity = self.linear_pid.compute(linear_error, dt)
-        
-        self.get_logger().info(f"linear_velocity: {linear_velocity}")
+            expected_y = self.start_goal_slope * self.current_x + self.start_goal_intercept
+            return abs(self.current_y - expected_y) < 0.05  # Allow small tolerance
 
-        # Limit velocities
-        linear_velocity = max(min(linear_velocity, self.max_linear_velocity), -self.max_linear_velocity)
-        angular_velocity = max(min(angular_velocity, self.max_angular_velocity), -self.max_angular_velocity) * 0.0
-        
-        self.get_logger().info(f"linear_velocity: {linear_velocity}")
+    def scan_callback(self, msg):
+        """
+        Callback to process laser scan data and handle obstacle detection.
+        Filters out NaN values from the laser scan data.
+        """
+        # Replace NaN values in laser scan ranges with a large number (e.g., infinity)
+        scan_ranges = np.array(msg.ranges)
+        scan_ranges = np.where(np.isnan(scan_ranges), float('inf'), scan_ranges)  # Replace NaNs with infinity
 
-        # Publish velocity commands
-        twist = Twist()
-        twist.linear.x = linear_velocity
-        twist.angular.z = angular_velocity
-        self.cmd_pub.publish(twist)
+        # LDS-02 Lidar: Adjust indices based on 360-degree field of view
+        self.left_dist = scan_ranges[50]  # Left (270 degrees)
+        self.front_dist = scan_ranges[0]  # Front (180 degrees)
+        self.right_dist = scan_ranges[180]   # Right (90 degrees)
+        self.leftfront_dist = scan_ranges[90]  # Left-front diagonal (225 degrees)
+        self.rightfront_dist = scan_ranges[220]  # Right-front diagonal (135 degrees)
 
-        # Move to the next waypoint if within range
-        if goal_distance < self.desired_distance and self.current_waypoint_idx < len(self.waypoints) - 1:
-            self.get_logger().info(f"Waypoints {self.current_waypoint_idx} have reached!!")
-            self.current_waypoint_idx += 1
+        # Mode switching logic
+        if self.robot_mode == "go to goal mode" and self.obstacle_detected():
+            # Switch to wall following mode if an obstacle is detected
+            self.robot_mode = "wall following mode"
+        elif self.robot_mode == "wall following mode" and not self.obstacle_detected() and self.on_start_goal_line():
+            # Switch back to go to goal mode if obstacle is cleared and we are back on the start-goal line
+            self.robot_mode = "go to goal mode"
 
+        # Continue in the current mode
+        if self.robot_mode == "go to goal mode":
+            self.go_to_goal()
+        elif self.robot_mode == "wall following mode":
+            self.follow_wall()
+
+    def obstacle_detected(self):
+        """
+        Return True if an obstacle is detected within the threshold distance.
+        """
+        return (self.front_dist < self.dist_thresh_obs or 
+                self.rightfront_dist < self.dist_thresh_obs or 
+                self.leftfront_dist < self.dist_thresh_obs or 
+                self.right_dist < self.dist_thresh_obs or 
+                self.left_dist < self.dist_thresh_obs)
+
+    def go_to_goal(self):
+        """
+        Drive the robot toward the current waypoint (goal).
+        """
+        if self.current_waypoint_index >= len(self.waypoints):
+            self.get_logger().info("All waypoints reached!")
+            self.stop_robot()
+            return
+
+        # Get the current goal (waypoint)
+        self.goal_x, self.goal_y = self.waypoints[self.current_waypoint_index]
+
+        # Calculate the distance and angle to the current goal
+        distance_to_goal = math.sqrt((self.goal_x - self.current_x) ** 2 + (self.goal_y - self.current_y) ** 2)
+        angle_to_goal = math.atan2(self.goal_y - self.current_y, self.goal_x - self.current_x)
+        yaw_error = angle_to_goal - self.current_yaw
+
+        # Normalize yaw_error to range [-pi, pi]
+        yaw_error = (yaw_error + math.pi) % (2 * math.pi) - math.pi
+
+        # Create a Twist message for velocity control
+        msg = Twist()
+
+        if distance_to_goal > self.goal_threshold:
+            # If yaw error is significant, rotate to face the goal
+            if abs(yaw_error) > 0.1:
+                msg.angular.z = self.turning_speed if yaw_error > 0 else -self.turning_speed
+            else:
+                # Move straight toward the goal
+                msg.linear.x = self.forward_speed
+        else:
+            # If the goal is reached, move to the next waypoint
+            self.get_logger().info(f"Waypoint {self.current_waypoint_index} reached.")
+            self.current_waypoint_index += 1
+            self.start_goal_line_calculated = False  # Recalculate start-goal line for the new waypoint
+
+        self.velocity_publisher.publish(msg)
+
+    def follow_wall(self):
+        """
+        Wall-following behavior to navigate around obstacles.
+        """
+        msg = Twist()
+
+        if self.front_dist > self.dist_thresh_obs and self.right_dist > self.wall_following_dist:
+            # No obstacle in front, follow the wall by moving forward
+            msg.linear.x = self.forward_speed
+        elif self.front_dist < self.dist_thresh_obs:
+            # Wall detected in front, turn left
+            msg.angular.z = self.turning_speed
+        elif self.right_dist < self.dist_too_close_to_wall:
+            # Too close to the wall, turn left
+            msg.angular.z = self.turning_speed
+        else:
+            # Follow the wall by moving forward
+            msg.linear.x = self.forward_speed
+
+        self.velocity_publisher.publish(msg)
+
+    def stop_robot(self):
+        """
+        Stop the robot by publishing zero velocities.
+        """
+        msg = Twist()
+        msg.linear.x = 0.0
+        msg.angular.z = 0.0
+        self.velocity_publisher.publish(msg)
 
 def main(args=None):
     rclpy.init(args=args)
-
-    # Create the node
-    chase_object_node = GoToGoal()
-
-    # Spin to keep the node running
-    rclpy.spin(chase_object_node)
-
-    # Cleanup when shutting down
-    chase_object_node.destroy_node()
+    bug2_controller = Bug2Controller()
+    rclpy.spin(bug2_controller)
+    bug2_controller.destroy_node()
     rclpy.shutdown()
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
