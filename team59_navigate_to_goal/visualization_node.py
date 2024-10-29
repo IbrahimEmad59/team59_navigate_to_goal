@@ -6,6 +6,7 @@ from sensor_msgs.msg import LaserScan
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
+from rclpy.qos import qos_profile_sensor_data
 
 class LidarPlotter(Node):
     def __init__(self):
@@ -14,7 +15,7 @@ class LidarPlotter(Node):
             LaserScan,
             '/scan',
             self.scan_callback,
-            10
+            qos_profile=qos_profile_sensor_data
         )
         
         # Initialize Matplotlib figure
