@@ -117,11 +117,11 @@ class Bug2Controller(Node):
         scan_ranges = np.where(np.isnan(scan_ranges), float('inf'), scan_ranges)  # Replace NaNs with infinity
 
         # LDS-02 Lidar: Adjust indices based on 360-degree field of view
-        self.left_dist = scan_ranges[int((270 - msg.angle_min) / msg.angle_increment)]  # Left (270 degrees)
-        self.front_dist = scan_ranges[int((180 - msg.angle_min) / msg.angle_increment)]  # Front (180 degrees)
-        self.right_dist = scan_ranges[int((90 - msg.angle_min) / msg.angle_increment)]   # Right (90 degrees)
-        self.leftfront_dist = scan_ranges[int((225 - msg.angle_min) / msg.angle_increment)]  # Left-front diagonal (225 degrees)
-        self.rightfront_dist = scan_ranges[int((135 - msg.angle_min) / msg.angle_increment)]  # Right-front diagonal (135 degrees)
+        self.left_dist = scan_ranges[50]  # Left (270 degrees)
+        self.front_dist = scan_ranges[0]  # Front (180 degrees)
+        self.right_dist = scan_ranges[180]   # Right (90 degrees)
+        self.leftfront_dist = scan_ranges[90]  # Left-front diagonal (225 degrees)
+        self.rightfront_dist = scan_ranges[220]  # Right-front diagonal (135 degrees)
 
         # Mode switching logic
         if self.robot_mode == "go to goal mode" and self.obstacle_detected():

@@ -31,7 +31,7 @@ class LidarPlotter(Node):
     def scan_callback(self, msg):
         # Get range data and set distance threshold for filtering
         ranges = np.array(msg.ranges)
-        distance_threshold = 2.0
+        distance_threshold = 1.0
         
         # Filter ranges for values below the distance threshold
         below_threshold_indices = np.where(ranges < distance_threshold)[0]
