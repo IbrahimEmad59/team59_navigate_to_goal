@@ -3,6 +3,7 @@ import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist, Point
 from sensor_msgs.msg import LaserScan
+from rclpy.qos import qos_profile_sensor_data
 import numpy as np  # For NaN filtering
 
 class Bug2Controller(Node):
@@ -20,7 +21,7 @@ class Bug2Controller(Node):
             LaserScan,
             '/scan',  # Laser scan for obstacle detection
             self.scan_callback,
-            10)
+            qos_profile=qos_profile_sensor_data)
 
         # Publisher
         self.velocity_publisher = self.create_publisher(Twist, '/cmd_vel', 10)
