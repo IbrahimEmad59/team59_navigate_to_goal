@@ -32,10 +32,10 @@ class Bug2Controller(Node):
         self.right_dist = float('inf')
         self.leftfront_dist = float('inf')
         self.rightfront_dist = float('inf')
-        self.dist_thresh_obs = 0.25  # Threshold to trigger wall following
+        self.dist_thresh_obs = 0.15  # Threshold to trigger wall following
         self.forward_speed = 0.1  # Speed when moving forward
-        self.turning_speed = 0.3  # Speed when turning
-        self.wall_following_dist = 0.45  # Distance to maintain while following the wall
+        self.turning_speed = 1.25  # Speed when turning
+        self.wall_following_dist = 0.15  # Distance to maintain while following the wall
         self.dist_too_close_to_wall = 0.15  # Minimum safe distance from the wall
         self.goal_threshold = 0.15  # Distance threshold to consider waypoint reached
 
@@ -117,11 +117,11 @@ class Bug2Controller(Node):
         scan_ranges = np.where(np.isnan(scan_ranges), float('inf'), scan_ranges)  # Replace NaNs with infinity
 
         # LDS-02 Lidar: Adjust indices based on 360-degree field of view
-        self.left_dist = scan_ranges[int(90/360 * len(msg.ranges))]  # Left (50 degrees)
+        self.left_dist = scan_ranges[int(90/360 * len(msg.ranges))]  # Left (90 degrees)
         self.front_dist = scan_ranges[int(0/360 * len(msg.ranges))]  # Front (0 degrees)
-        self.right_dist = scan_ranges[int(270/360 * len(msg.ranges))]   # Right (180 degrees)
-        self.leftfront_dist = scan_ranges[int(45/360 * len(msg.ranges))]  # Left-front diagonal (90 degrees)
-        self.rightfront_dist = scan_ranges[int(315/360 * len(msg.ranges))]  # Right-front diagonal (220 degrees)
+        self.right_dist = scan_ranges[int(270/360 * len(msg.ranges))]   # Right (270 degrees)
+        self.leftfront_dist = scan_ranges[int(45/360 * len(msg.ranges))]  # Left-front diagonal (45 degrees)
+        self.rightfront_dist = scan_ranges[int(315/360 * len(msg.ranges))]  # Right-front diagonal (315 degrees)
 
         # Mode switching logic
         if self.robot_mode == "go to goal mode" and self.obstacle_detected():
@@ -135,6 +135,17 @@ class Bug2Controller(Node):
         if self.robot_mode == "go to goal mode":
             self.go_to_goal()
         elif self.robot_mode == "wall following mode":
+            # Record the hit point  
+            self.hit_point_x = self.current_x
+            self.hit_point_y = self.current_y
+        
+            # Record the distance to the goal from the 
+            # hit point
+            self.distance_to_goal_from_hit_point = (
+                math.sqrt((
+                pow(self.goal_x - self.hit_point_x, 2)) + (
+                pow(self.goal_y - self.hit_point_y, 2)))) 
+            
             self.follow_wall()
 
     def obstacle_detected(self):
@@ -191,14 +202,57 @@ class Bug2Controller(Node):
         """
         msg = Twist()
 
+        # Calculate the point on the start-goal 
+        # line that is closest to the current position
+        x_start_goal_line = self.current_x
+        y_start_goal_line = (
+            self.start_goal_slope * (
+            x_start_goal_line)) + (
+            self.start_goal_intercept)
+                        
+        # Calculate the distance between current position 
+        # and the start-goal line
+        distance_to_start_goal_line = math.sqrt(pow(
+                    x_start_goal_line - self.current_x, 2) + pow(
+                    y_start_goal_line - self.current_y, 2)) 
+                            
+        # If we hit the start-goal line again               
+        if distance_to_start_goal_line < 0.1:
+            
+            # Determine if we need to leave the wall and change the mode
+            # to 'go to goal'
+            # Let this point be the leave point
+            self.leave_point_x = self.current_x
+            self.leave_point_y = self.current_y
+
+            # Record the distance to the goal from the leave point
+            self.distance_to_goal_from_leave_point = math.sqrt(
+                pow(self.goal_x 
+                - self.leave_point_x, 2)
+                + pow(self.goal_y  
+                - self.leave_point_y, 2)) 
+            
+            # Is the leave point closer to the goal than the hit point?
+            # If yes, go to goal. 
+            diff = self.distance_to_goal_from_hit_point - self.distance_to_goal_from_leave_point
+            if diff > 0.25:
+                        
+                # Change the mode. Go to goal.
+                self.robot_mode = "go to goal mode"
+
+
+            # Exit this function
+            return
+
+
         d = self.wall_following_dist
          
-        if self.leftfront_dist > d and self.front_dist > d and self.rightfront_dist > d:
-            self.wall_following_state = "search for wall"
-            msg.linear.x = self.forward_speed
-            msg.angular.z = -self.turning_speed # turn right to find wall
+        # if self.leftfront_dist > d and self.front_dist > d and self.rightfront_dist > d:
+        #     self.wall_following_state = "search for wall"
+        #     msg.linear.x = self.forward_speed
+        #     msg.angular.z = -self.turning_speed # turn right to find wall
              
-        elif self.leftfront_dist > d and self.front_dist < d and self.rightfront_dist > d:
+        if self.leftfront_dist > d and self.front_dist < d and self.rightfront_dist > d:
             self.wall_following_state = "turn left"
             msg.angular.z = self.turning_speed
              
@@ -209,32 +263,37 @@ class Bug2Controller(Node):
                 self.wall_following_state = "turn left"
                 msg.linear.x = self.forward_speed
                 msg.angular.z = self.turning_speed      
+            elif (self.rightfront_dist > self.dist_too_close_to_wall):
+                # Getting too far to the wall
+                self.wall_following_state = "turn right"
+                msg.linear.x = self.forward_speed
+                msg.angular.z = -self.turning_speed  
             else:           
                 # Go straight ahead
                 self.wall_following_state = "follow wall" 
                 msg.linear.x = self.forward_speed   
                                      
-        elif self.leftfront_dist < d and self.front_dist > d and self.rightfront_dist > d:
-            self.wall_following_state = "search for wall"
-            msg.linear.x = self.forward_speed
-            msg.angular.z = -self.turning_speed # turn right to find wall
+        # elif self.leftfront_dist < d and self.front_dist > d and self.rightfront_dist > d:
+        #     self.wall_following_state = "search for wall"
+        #     msg.linear.x = self.forward_speed
+        #     msg.angular.z = -self.turning_speed # turn right to find wall
              
         elif self.leftfront_dist > d and self.front_dist < d and self.rightfront_dist < d:
             self.wall_following_state = "turn left"
             msg.angular.z = self.turning_speed
              
         elif self.leftfront_dist < d and self.front_dist < d and self.rightfront_dist > d:
-            self.wall_following_state = "turn left"
-            msg.angular.z = self.turning_speed
+            self.wall_following_state = "turn right"
+            msg.angular.z = -self.turning_speed
              
         elif self.leftfront_dist < d and self.front_dist < d and self.rightfront_dist < d:
             self.wall_following_state = "turn left"
             msg.angular.z = self.turning_speed
              
-        elif self.leftfront_dist < d and self.front_dist > d and self.rightfront_dist < d:
-            self.wall_following_state = "search for wall"
-            msg.linear.x = self.forward_speed
-            msg.angular.z = -self.turning_speed # turn right to find wall
+        # elif self.leftfront_dist < d and self.front_dist > d and self.rightfront_dist < d:
+        #     self.wall_following_state = "search for wall"
+        #     msg.linear.x = self.forward_speed
+        #     msg.angular.z = -self.turning_speed # turn right to find wall
              
         else:
             pass
