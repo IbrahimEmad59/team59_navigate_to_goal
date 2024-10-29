@@ -260,33 +260,51 @@ class Bug2Controller(Node):
         #     self.wall_following_state = "search for wall"
         #     msg.linear.x = self.forward_speed
         #     msg.angular.z = -self.turning_speed # turn right to find wall
-             
-        if self.leftfront_dist > d and self.front_dist < d and self.rightfront_dist > d:
+        if self.front_dist < d:
             self.wall_following_state = "1\ turn left"
-            msg.angular.z = self.turning_speed
             self.get_logger().info(f"State is {self.wall_following_state}")
-            self.stop_robot()
-            time.sleep(2)
-
-             
-        elif (self.leftfront_dist > d and self.front_dist > d and self.rightfront_dist < d):
+            msg.angular.z = self.turning_speed
+        
+        elif self.right_dist < d:
             if (self.rightfront_dist < self.dist_too_close_to_wall):
                 # Getting too close to the wall
                 self.wall_following_state = "2\ turn left"
                 # msg.linear.x = self.forward_speed
                 msg.angular.z = self.turning_speed
                 self.get_logger().info(f"State is {self.wall_following_state}")
-                self.stop_robot()
-                time.sleep(2)
       
             else:           
                 # Go straight ahead
                 self.wall_following_state = "1\ follow wall" 
                 msg.linear.x = self.forward_speed  
                 self.get_logger().info(f"State is {self.wall_following_state}")
-                self.stop_robot()
-                time.sleep(2)
-                                     
+        
+        elif self.leftfront_dist > d and self.front_dist > d and self.rightfront_dist > d and self.rightback_dist > 2*d:
+            self.wall_following_state = "1\ turn right"
+            msg.angular.z = -self.turning_speed
+            self.get_logger().info(f"State is {self.wall_following_state}")                                     
+        
+
+        # if self.leftfront_dist > d and self.front_dist < d and self.rightfront_dist > d:
+        #     self.wall_following_state = "1\ turn left"
+        #     msg.angular.z = self.turning_speed
+        #     self.get_logger().info(f"State is {self.wall_following_state}")
+             
+        # elif (self.leftfront_dist > d and self.front_dist > d and self.rightfront_dist < d):
+        #     if (self.rightfront_dist < self.dist_too_close_to_wall):
+        #         # Getting too close to the wall
+        #         self.wall_following_state = "2\ turn left"
+        #         # msg.linear.x = self.forward_speed
+        #         msg.angular.z = self.turning_speed
+        #         self.get_logger().info(f"State is {self.wall_following_state}")
+      
+        #     else:           
+        #         # Go straight ahead
+        #         self.wall_following_state = "1\ follow wall" 
+        #         msg.linear.x = self.forward_speed  
+        #         self.get_logger().info(f"State is {self.wall_following_state}")
+        
+
         # elif self.leftfront_dist < d and self.front_dist > d and self.rightfront_dist > d:
         #     self.wall_following_state = "search for wall"
         #     msg.linear.x = self.forward_speed
@@ -296,13 +314,10 @@ class Bug2Controller(Node):
         #     self.wall_following_state = "turn left"
         #     msg.angular.z = self.turning_speed
              
-        elif self.leftfront_dist > d and self.front_dist > d and self.rightfront_dist > d and self.rightback_dist > 2*d:
-            self.wall_following_state = "1\ turn right"
-            msg.angular.z = -self.turning_speed
-            self.get_logger().info(f"State is {self.wall_following_state}")
-            self.stop_robot()
-            time.sleep(2)
-
+        # elif self.leftfront_dist > d and self.front_dist > d and self.rightfront_dist > d and self.rightback_dist > 2*d:
+        #     self.wall_following_state = "1\ turn right"
+        #     msg.angular.z = -self.turning_speed
+        #     self.get_logger().info(f"State is {self.wall_following_state}")
              
         # elif self.leftfront_dist < d and self.front_dist < d and self.rightfront_dist < d:
         #     self.wall_following_state = "turn left"
