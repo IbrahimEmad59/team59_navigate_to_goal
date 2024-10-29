@@ -26,7 +26,7 @@ class GetObjectRange(Node):
         # Filter out invalid range readings
         ranges = [x for x in ranges if not np.isnan(x)]
 
-        self.get_logger().info(f"Original data: {ranges}")
+        # self.get_logger().info(f"Original data: {ranges}")
         
         closest_idxs = [i for i in range(len(ranges)-1) if ranges[i] < 1 and ranges[i+1] < 1]
         closest_distances = [ranges[i] for i in closest_idxs]
