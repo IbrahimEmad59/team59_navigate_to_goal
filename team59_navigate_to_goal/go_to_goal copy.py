@@ -73,8 +73,12 @@ class Bug2Controller(Node):
         self.start_goal_slope = None
         self.start_goal_intercept = None
 
+        self.hit_obstale_line_calculated = False
+        self.hit_obstale_slope = None
+        self.hit_obstale_intercept = None
+
         # Waypoints (goal positions)
-        self.waypoints = [(1.5, 0.0), (1.5, 1.4), (0.0, 1.4)]  # Add your waypoints here
+        self.waypoints = [(1.5, 0.0), (1.5, 1.4), (0.0, 1.4)]  
         self.current_waypoint_index = 0
         
         self.has_obstacle = False
@@ -86,9 +90,17 @@ class Bug2Controller(Node):
         self.obstacle_x_min = msg.x
         self.obstacle_y_min = msg.y
 
+    # Calculate the obstacel_tangent_line if not already done
+        if not self.hit_obstale_line_calculated:
+            self.calculate_obstacel_tangent_line()
+
     def max_obstacle_callback(self, msg):
         self.obstacle_x_max = msg.x
         self.obstacle_y_max = msg.y
+
+    # Calculate the obstacel_tangent_line if not already done
+        if not self.hit_obstale_line_calculated:
+            self.calculate_obstacel_tangent_line()
 
     def odom_callback(self, msg):
         """
@@ -101,6 +113,23 @@ class Bug2Controller(Node):
         # Calculate the start-to-goal line if not already done
         if not self.start_goal_line_calculated:
             self.calculate_start_goal_line()
+    
+    def calculate_obstacel_tangent_line(self):
+        if not self.obstacle_y_max and not self.obstacle_y_min:
+            return
+
+        # Set the start point as the robot's initial position
+        self.start_x = self.hit_point_x
+        self.start_y = self.hit_point_y
+
+        # Calculate the slope and intercept of the line
+        if self.obstacle_x_max != self.obstacle_x_min:
+            self.hit_obstale_slope = (self.obstacle_y_max - self.obstacle_y_min) / (self.obstacle_x_max - self.obstacle_x_min)
+            self.hit_obstale_intercept = self.obstacle_y_min - self.start_goal_slope * self.obstacle_x_min
+        else:
+            self.hit_obstale_slope = float('inf')  # Vertical line
+
+        self.start_goal_line_calculated = True
 
     def calculate_start_goal_line(self):
         """
@@ -176,13 +205,6 @@ class Bug2Controller(Node):
             # Record the hit point  
             self.hit_point_x = self.current_x
             self.hit_point_y = self.current_y
-        
-            # Record the distance to the goal from the 
-            # hit point
-            self.distance_to_goal_from_hit_point = (
-                math.sqrt((
-                pow(self.goal_x - self.hit_point_x, 2)) + (
-                pow(self.goal_y - self.hit_point_y, 2)))) 
             
             self.follow_wall()
             self.get_logger().info(f"Robot is at {self.robot_mode}")
@@ -280,6 +302,10 @@ class Bug2Controller(Node):
 
             # Exit this function
             return
+        
+        # if self.has_obstacle:
+        #         new_waypoint_x = self.obstacle_x_max - safety_margin * np.sin(self.current_yaw)
+        #         new_waypoint_y = self.obstacle_y_max + safety_margin * np.cos(self.current_yaw)                    
 ###########################################
         if self.has_obstacle:
             # Calculate the distance from the robot to the obstacle
@@ -305,11 +331,7 @@ class Bug2Controller(Node):
                 self.get_logger().info("Obstacle detected, adding new waypoint")
 ###############################################
         d = self.wall_following_dist
-         
-        # if self.leftfront_dist > d and self.front_dist > d and self.rightfront_dist > d:
-        #     self.wall_following_state = "search for wall"
-        #     msg.linear.x = self.forward_speed
-        #     msg.angular.z = -self.turning_speed # turn right to find wall
+     
         if self.front_dist < d:
             self.wall_following_state = "1\ turn left"
             self.get_logger().info(f"State is {self.wall_following_state}")
@@ -334,50 +356,6 @@ class Bug2Controller(Node):
             msg.angular.z = -self.turning_speed
             self.get_logger().info(f"State is {self.wall_following_state}")                                     
         
-
-        # if self.leftfront_dist > d and self.front_dist < d and self.rightfront_dist > d:
-        #     self.wall_following_state = "1\ turn left"
-        #     msg.angular.z = self.turning_speed
-        #     self.get_logger().info(f"State is {self.wall_following_state}")
-             
-        # elif (self.leftfront_dist > d and self.front_dist > d and self.rightfront_dist < d):
-        #     if (self.rightfront_dist < self.dist_too_close_to_wall):
-        #         # Getting too close to the wall
-        #         self.wall_following_state = "2\ turn left"
-        #         # msg.linear.x = self.forward_speed
-        #         msg.angular.z = self.turning_speed
-        #         self.get_logger().info(f"State is {self.wall_following_state}")
-      
-        #     else:           
-        #         # Go straight ahead
-        #         self.wall_following_state = "1\ follow wall" 
-        #         msg.linear.x = self.forward_speed  
-        #         self.get_logger().info(f"State is {self.wall_following_state}")
-        
-
-        # elif self.leftfront_dist < d and self.front_dist > d and self.rightfront_dist > d:
-        #     self.wall_following_state = "search for wall"
-        #     msg.linear.x = self.forward_speed
-        #     msg.angular.z = -self.turning_speed # turn right to find wall
-             
-        # elif self.leftfront_dist > d and self.front_dist < d and self.rightfront_dist < d:
-        #     self.wall_following_state = "turn left"
-        #     msg.angular.z = self.turning_speed
-             
-        # elif self.leftfront_dist > d and self.front_dist > d and self.rightfront_dist > d and self.rightback_dist > 2*d:
-        #     self.wall_following_state = "1\ turn right"
-        #     msg.angular.z = -self.turning_speed
-        #     self.get_logger().info(f"State is {self.wall_following_state}")
-             
-        # elif self.leftfront_dist < d and self.front_dist < d and self.rightfront_dist < d:
-        #     self.wall_following_state = "turn left"
-        #     msg.angular.z = self.turning_speed
-             
-        # elif self.leftfront_dist < d and self.front_dist > d and self.rightfront_dist < d:
-        #     self.wall_following_state = "search for wall"
-        #     msg.linear.x = self.forward_speed
-        #     msg.angular.z = -self.turning_speed # turn right to find wall
-             
         else:
             pass
 
