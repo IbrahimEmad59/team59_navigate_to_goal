@@ -262,7 +262,7 @@ class Bug2Controller(Node):
         """
         Wall-following behavior to navigate around obstacles.
         """
-        msg = Twist()
+        # msg = Twist()
 
         # Calculate the point on the start-goal 
         # line that is closest to the current position
@@ -312,7 +312,9 @@ class Bug2Controller(Node):
 ###########################################
         if self.has_obstacle:
             # Calculate the distance from the robot to the obstacle
-            obstacle_distance = np.sqrt((self.obstacle_x_min - self.current_x)**2 + (self.obstacle_y_min - self.current_y)**2)
+            obstacle_distance_min = np.sqrt((self.obstacle_x_min - self.current_x)**2 + (self.obstacle_y_min - self.current_y)**2)
+            obstacle_distance_max = np.sqrt((self.obstacle_x_max - self.current_x)**2 + (self.obstacle_y_max - self.current_y)**2)
+            obstacle_distance = min(obstacle_distance_min,obstacle_distance_max)
 
             if obstacle_distance < 0.5:  # Adjust this threshold as needed
                 # Generate a new waypoint to the left or right of the obstacle
@@ -333,36 +335,36 @@ class Bug2Controller(Node):
                 self.robot_mode = "go_to_goal_mode"
                 self.get_logger().info("Obstacle detected, adding new waypoint")
 ###############################################
-        d = self.wall_following_dist
+        # d = self.wall_following_dist
      
-        if self.front_dist < d:
-            self.wall_following_state = "1\ turn left"
-            self.get_logger().info(f"State is {self.wall_following_state}")
-            msg.angular.z = self.turning_speed
+        # if self.front_dist < d:
+        #     self.wall_following_state = "1\ turn left"
+        #     self.get_logger().info(f"State is {self.wall_following_state}")
+        #     msg.angular.z = self.turning_speed
         
-        elif self.right_dist < d:
-            if (self.rightfront_dist < self.dist_too_close_to_wall):
-                # Getting too close to the wall
-                self.wall_following_state = "2\ turn left"
-                # msg.linear.x = self.forward_speed
-                msg.angular.z = self.turning_speed
-                self.get_logger().info(f"State is {self.wall_following_state}")
+        # elif self.right_dist < d:
+        #     if (self.rightfront_dist < self.dist_too_close_to_wall):
+        #         # Getting too close to the wall
+        #         self.wall_following_state = "2\ turn left"
+        #         # msg.linear.x = self.forward_speed
+        #         msg.angular.z = self.turning_speed
+        #         self.get_logger().info(f"State is {self.wall_following_state}")
       
-            else:           
-                # Go straight ahead
-                self.wall_following_state = "1\ follow wall" 
-                msg.linear.x = self.forward_speed  
-                self.get_logger().info(f"State is {self.wall_following_state}")
+        #     else:           
+        #         # Go straight ahead
+        #         self.wall_following_state = "1\ follow wall" 
+        #         msg.linear.x = self.forward_speed  
+        #         self.get_logger().info(f"State is {self.wall_following_state}")
         
-        elif self.leftfront_dist > d and self.front_dist > d and self.rightfront_dist > d and self.rightback_dist > 2*d:
-            self.wall_following_state = "1\ turn right"
-            msg.angular.z = -self.turning_speed
-            self.get_logger().info(f"State is {self.wall_following_state}")                                     
+        # elif self.leftfront_dist > d and self.front_dist > d and self.rightfront_dist > d and self.rightback_dist > 2*d:
+        #     self.wall_following_state = "1\ turn right"
+        #     msg.angular.z = -self.turning_speed
+        #     self.get_logger().info(f"State is {self.wall_following_state}")                                     
         
-        else:
-            pass
+        # else:
+        #     pass
 
-        self.velocity_publisher.publish(msg)
+        # self.velocity_publisher.publish(msg)
 
     def stop_robot(self):
         """
