@@ -206,7 +206,7 @@ class Bug2Controller(Node):
             self.get_logger().info(f"Robot is at {self.robot_mode}")
 
 
-    def obstacle_detected(self,msg):
+    def obstacle_detected(self):
         """
         Return True if an obstacle is detected within the threshold distance.
         """
