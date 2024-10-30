@@ -87,6 +87,7 @@ class Bug2Controller(Node):
         self.current_obstacle_waypoint_index = 0
 
         self.has_obstacle = False
+        self.avoiding = False
         
         # Modes
         self.robot_mode = "go to goal mode"  # Can be "go to goal mode" or "wall following mode"
@@ -202,6 +203,7 @@ class Bug2Controller(Node):
             time.sleep(5)  # Wait at the waypoint
             self.current_waypoint_index += 1
             self.start_goal_line_calculated = False  # Recalculate start-goal line for the new waypoint
+            self.avoiding = False
 
         self.velocity_publisher.publish(msg)
 
@@ -221,12 +223,12 @@ class Bug2Controller(Node):
             obstacle_distance_max = np.sqrt((self.obstacle_x_max - self.current_x)**2 + (self.obstacle_y_max - self.current_y)**2)
             obstacle_distance = min(obstacle_distance_min,obstacle_distance_max)
 
-            if obstacle_distance < 0.5:  # Adjust this threshold as needed
+            if obstacle_distance < 0.5 and not self.avoiding:  # Adjust this threshold as needed
                 # Generate a new waypoint to the left or right of the obstacle
                 safety_margin = 0.2  # Adjust this margin as needed
                 
-                self.stop_robot()
-                time.sleep(2)  # Wait at the waypoint
+                # self.stop_robot()
+                # time.sleep(2)  # Wait at the waypoint
 
                 # Choose the side based on the current robot orientation and obstacle position
                 if self.current_yaw < np.pi / 2 or self.current_yaw > 3 * np.pi / 2:  # Robot facing left
@@ -237,10 +239,13 @@ class Bug2Controller(Node):
                     new_waypoint_y = self.obstacle_y_min - safety_margin * np.cos(self.current_yaw)
 
                 # Add the new waypoint to the obstacle waypoints list
-                self.waypoints.insert(self.current_waypoint_index+1, (new_waypoint_x, new_waypoint_y))
+                self.current_waypoint_index += 1
+                
+                self.waypoints.insert(self.current_waypoint_index, (new_waypoint_x, new_waypoint_y))
                 # self.obstacle_waypoints.append((new_waypoint_x, new_waypoint_y))
                 self.go_to_goal()
                 self.get_logger().info(f"Obstacle detected, adding new waypoint at ({new_waypoint_x},{new_waypoint_y})")
+                self.avoiding = True
         
         #     # Get the current goal (waypoint)
         #     self.waypoint_x, self.waypoint_y = self.obstacle_waypoints[self.current_obstacle_waypoint_index]
