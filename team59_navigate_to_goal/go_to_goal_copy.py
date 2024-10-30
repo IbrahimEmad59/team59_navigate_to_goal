@@ -239,7 +239,7 @@ class Bug2Controller(Node):
                     new_waypoint_y = self.obstacle_y_min - safety_margin * np.cos(self.current_yaw)
 
                 # Add the new waypoint to the obstacle waypoints list
-                self.current_waypoint_index += 1
+                # self.current_waypoint_index -= 1
                 
                 self.waypoints.insert(self.current_waypoint_index, (new_waypoint_x, new_waypoint_y))
                 # self.obstacle_waypoints.append((new_waypoint_x, new_waypoint_y))
