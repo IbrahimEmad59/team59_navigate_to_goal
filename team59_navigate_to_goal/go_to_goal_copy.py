@@ -96,9 +96,9 @@ class Bug2Controller(Node):
         self.obstacle_x_max = msg.x
         self.obstacle_y_max = msg.y
 
-    # Calculate the obstacel_tangent_line if not already done
-        if not self.hit_obstale_line_calculated:
-            self.calculate_obstacel_tangent_line()
+    # # Calculate the obstacel_tangent_line if not already done
+    #     if not self.hit_obstale_line_calculated:
+    #         self.calculate_obstacel_tangent_line()
 
     def odom_callback(self, msg):
         """
