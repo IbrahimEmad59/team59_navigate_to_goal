@@ -231,7 +231,7 @@ class Bug2Controller(Node):
                 self.waypoints.insert(self.current_waypoint_index + 1, (new_waypoint_x, new_waypoint_y))
 
                 # Switch to go-to-goal mode to reach the new waypoint
-                self.robot_mode = "go_to_goal_mode"
+                self.robot_mode = "go to goal mode"
                 self.get_logger().info("Obstacle detected, adding new waypoint")
 ###############################################
         
