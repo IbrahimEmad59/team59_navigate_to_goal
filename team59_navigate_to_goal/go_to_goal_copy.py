@@ -70,6 +70,10 @@ class Bug2Controller(Node):
         self.hit_obstale_line_calculated = False
         self.hit_obstale_slope = None
         self.hit_obstale_intercept = None
+        self.obstacle_x_min = None
+        self.obstacle_y_min = None
+        self.obstacle_x_max = None
+        self.obstacle_y_max = None
 
         # Waypoints (goal positions)
         self.waypoints = [(1.5, 0.0), (1.5, 1.4), (0.0, 1.4)]  
