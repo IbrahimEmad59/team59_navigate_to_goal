@@ -171,6 +171,8 @@ class Bug2Controller(Node):
             self.get_logger().info("All waypoints reached!")
             self.stop_robot()
             return
+        
+        self.get_logger().info(f"Following waypoint {self.current_waypoint_index}")
 
         # Get the current goal (waypoint)
         self.goal_x, self.goal_y = self.waypoints[self.current_waypoint_index]
