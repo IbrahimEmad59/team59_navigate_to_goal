@@ -88,9 +88,9 @@ class Bug2Controller(Node):
         self.obstacle_x_min = msg.x
         self.obstacle_y_min = msg.y
 
-    # Calculate the obstacel_tangent_line if not already done
-        if not self.hit_obstale_line_calculated:
-            self.calculate_obstacel_tangent_line()
+    # # Calculate the obstacel_tangent_line if not already done
+    #     if not self.hit_obstale_line_calculated:
+    #         self.calculate_obstacel_tangent_line()
 
     def max_obstacle_callback(self, msg):
         self.obstacle_x_max = msg.x
