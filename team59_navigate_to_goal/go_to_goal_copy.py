@@ -208,7 +208,7 @@ class Bug2Controller(Node):
         Wall-following behavior to navigate around obstacles.
         """
         # Create a Twist message for velocity control
-        msg = Twist()
+        # msg = Twist()
         # if self.has_obstacle:
         #         new_waypoint_x = self.obstacle_x_max - safety_margin * np.sin(self.current_yaw)
         #         new_waypoint_y = self.obstacle_y_max + safety_margin * np.cos(self.current_yaw)                    
@@ -235,39 +235,40 @@ class Bug2Controller(Node):
                     new_waypoint_y = self.obstacle_y_min - safety_margin * np.cos(self.current_yaw)
 
                 # Add the new waypoint to the obstacle waypoints list
-                self.obstacle_waypoints.append((new_waypoint_x, new_waypoint_y))
-
+                self.waypoints.insert(self.current_waypoint_index+1, (new_waypoint_x, new_waypoint_y))
+                # self.obstacle_waypoints.append((new_waypoint_x, new_waypoint_y))
+                self.go_to_goal()
                 self.get_logger().info(f"Obstacle detected, adding new waypoint at ({new_waypoint_x},{new_waypoint_y})")
         
-            # Get the current goal (waypoint)
-            self.waypoint_x, self.waypoint_y = self.obstacle_waypoints[self.current_obstacle_waypoint_index]
+        #     # Get the current goal (waypoint)
+        #     self.waypoint_x, self.waypoint_y = self.obstacle_waypoints[self.current_obstacle_waypoint_index]
 
-            # Calculate the distance and angle to the current goal
-            distance_to_goal = math.sqrt((self.waypoint_x - self.current_x) ** 2 + (self.waypoint_y - self.current_y) ** 2)
-            angle_to_goal = math.atan2(self.waypoint_y - self.current_y, self.waypoint_x - self.current_x)
-            yaw_error = angle_to_goal - self.current_yaw
+        #     # Calculate the distance and angle to the current goal
+        #     distance_to_goal = math.sqrt((self.waypoint_x - self.current_x) ** 2 + (self.waypoint_y - self.current_y) ** 2)
+        #     angle_to_goal = math.atan2(self.waypoint_y - self.current_y, self.waypoint_x - self.current_x)
+        #     yaw_error = angle_to_goal - self.current_yaw
             
-            self.get_logger().info(f"Distance to new waypoint is {distance_to_goal}")
+        #     self.get_logger().info(f"Distance to new waypoint is {distance_to_goal}")
 
-            # Normalize yaw_error to range [-pi, pi]
-            yaw_error = (yaw_error + math.pi) % (2 * math.pi) - math.pi
+        #     # Normalize yaw_error to range [-pi, pi]
+        #     yaw_error = (yaw_error + math.pi) % (2 * math.pi) - math.pi
 
-            if distance_to_goal > self.goal_threshold:
-                # If yaw error is significant, rotate to face the goal
-                if abs(yaw_error) > 0.1:
-                    msg.angular.z = self.turning_speed if yaw_error > 0 else -self.turning_speed
-                else:
-                    # Move straight toward the goal
-                    msg.linear.x = self.forward_speed
-            else:
-                # If the goal is reached, move to the next waypoint
-                self.get_logger().info(f"Obstacle Waypoint {self.current_obstacle_waypoint_index} reached.")
-                self.stop_robot()
-                time.sleep(5)  # Wait at the waypoint
-                self.current_obstacle_waypoint_index += 1
+        #     if distance_to_goal > self.goal_threshold:
+        #         # If yaw error is significant, rotate to face the goal
+        #         if abs(yaw_error) > 0.1:
+        #             msg.angular.z = self.turning_speed if yaw_error > 0 else -self.turning_speed
+        #         else:
+        #             # Move straight toward the goal
+        #             msg.linear.x = self.forward_speed
+        #     else:
+        #         # If the goal is reached, move to the next waypoint
+        #         self.get_logger().info(f"Obstacle Waypoint {self.current_obstacle_waypoint_index} reached.")
+        #         self.stop_robot()
+        #         time.sleep(5)  # Wait at the waypoint
+        #         self.current_obstacle_waypoint_index += 1
 
-        self.velocity_publisher.publish(msg)
-        self.get_logger().info(f"The list of obstacle waypoints [{self.obstacle_waypoints}]")
+        # self.velocity_publisher.publish(msg)
+        # self.get_logger().info(f"The list of obstacle waypoints [{self.obstacle_waypoints}]")
 
         
     def stop_robot(self):
