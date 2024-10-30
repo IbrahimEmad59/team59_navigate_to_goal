@@ -112,22 +112,22 @@ class Bug2Controller(Node):
         if not self.start_goal_line_calculated:
             self.calculate_start_goal_line()
     
-    def calculate_obstacel_tangent_line(self):
-        if not self.obstacle_y_max and not self.obstacle_y_min:
-            return
+    # def calculate_obstacel_tangent_line(self):
+    #     if not self.obstacle_y_max and not self.obstacle_y_min:
+    #         return
 
-        # Set the start point as the robot's initial position
-        self.start_x = self.hit_point_x
-        self.start_y = self.hit_point_y
+    #     # Set the start point as the robot's initial position
+    #     self.start_x = self.hit_point_x
+    #     self.start_y = self.hit_point_y
 
-        # Calculate the slope and intercept of the line
-        if self.obstacle_x_max != self.obstacle_x_min:
-            self.hit_obstale_slope = (self.obstacle_y_max - self.obstacle_y_min) / (self.obstacle_x_max - self.obstacle_x_min)
-            self.hit_obstale_intercept = self.obstacle_y_min - self.start_goal_slope * self.obstacle_x_min
-        else:
-            self.hit_obstale_slope = float('inf')  # Vertical line
+    #     # Calculate the slope and intercept of the line
+    #     if self.obstacle_x_max != self.obstacle_x_min:
+    #         self.hit_obstale_slope = (self.obstacle_y_max - self.obstacle_y_min) / (self.obstacle_x_max - self.obstacle_x_min)
+    #         self.hit_obstale_intercept = self.obstacle_y_min - self.start_goal_slope * self.obstacle_x_min
+    #     else:
+    #         self.hit_obstale_slope = float('inf')  # Vertical line
 
-        self.start_goal_line_calculated = True
+    #     self.start_goal_line_calculated = True
 
     def calculate_start_goal_line(self):
         """
