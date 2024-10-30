@@ -189,7 +189,7 @@ class Bug2Controller(Node):
         else:
             # If the goal is reached, move to the next waypoint
             self.get_logger().info(f"Waypoint {self.current_waypoint_index} reached.")
-            self.stop()
+            self.stop_robot()
             time.sleep(5)  # Wait at the waypoint
             self.current_waypoint_index += 1
             self.start_goal_line_calculated = False  # Recalculate start-goal line for the new waypoint
@@ -216,7 +216,7 @@ class Bug2Controller(Node):
                 # Generate a new waypoint to the left or right of the obstacle
                 safety_margin = 0.2  # Adjust this margin as needed
                 
-                self.stop()
+                self.stop_robot()
                 time.sleep(2)  # Wait at the waypoint
 
                 # Choose the side based on the current robot orientation and obstacle position
