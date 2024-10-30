@@ -158,11 +158,7 @@ class Bug2Controller(Node):
         """
         Return True if an obstacle is detected within the threshold distance.
         """
-        return (self.front_dist < self.dist_thresh_obs or 
-                self.rightfront_dist < self.dist_thresh_obs or 
-                self.leftfront_dist < self.dist_thresh_obs or 
-                self.right_dist < self.dist_thresh_obs or 
-                self.left_dist < self.dist_thresh_obs)
+        return (self.front_dist < self.dist_thresh_obs)
 
     def go_to_goal(self):
         """
