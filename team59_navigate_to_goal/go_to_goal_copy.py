@@ -88,17 +88,9 @@ class Bug2Controller(Node):
         self.obstacle_x_min = msg.x
         self.obstacle_y_min = msg.y
 
-    # # Calculate the obstacel_tangent_line if not already done
-    #     if not self.hit_obstale_line_calculated:
-    #         self.calculate_obstacel_tangent_line()
-
     def max_obstacle_callback(self, msg):
         self.obstacle_x_max = msg.x
         self.obstacle_y_max = msg.y
-
-    # # Calculate the obstacel_tangent_line if not already done
-    #     if not self.hit_obstale_line_calculated:
-    #         self.calculate_obstacel_tangent_line()
 
     def odom_callback(self, msg):
         """
@@ -107,62 +99,6 @@ class Bug2Controller(Node):
         self.current_x = msg.x
         self.current_y = msg.y
         self.current_yaw = msg.z
-
-        # Calculate the start-to-goal line if not already done
-        if not self.start_goal_line_calculated:
-            self.calculate_start_goal_line()
-    
-    # def calculate_obstacel_tangent_line(self):
-    #     if not self.obstacle_y_max and not self.obstacle_y_min:
-    #         return
-
-    #     # Set the start point as the robot's initial position
-    #     self.start_x = self.hit_point_x
-    #     self.start_y = self.hit_point_y
-
-    #     # Calculate the slope and intercept of the line
-    #     if self.obstacle_x_max != self.obstacle_x_min:
-    #         self.hit_obstale_slope = (self.obstacle_y_max - self.obstacle_y_min) / (self.obstacle_x_max - self.obstacle_x_min)
-    #         self.hit_obstale_intercept = self.obstacle_y_min - self.start_goal_slope * self.obstacle_x_min
-    #     else:
-    #         self.hit_obstale_slope = float('inf')  # Vertical line
-
-    #     self.start_goal_line_calculated = True
-
-    def calculate_start_goal_line(self):
-        """
-        Calculate the slope and intercept of the line connecting the start position and the goal.
-        This is used in the BUG2 algorithm to determine when the robot can return to the go-to-goal mode.
-        """
-        if not self.waypoints:
-            return
-
-        # Set the start point as the robot's initial position
-        self.start_x = self.current_x
-        self.start_y = self.current_y
-
-        # Set the goal point as the first waypoint
-        self.goal_x, self.goal_y = self.waypoints[self.current_waypoint_index]
-
-        # Calculate the slope and intercept of the line
-        if self.goal_x != self.start_x:
-            self.start_goal_slope = (self.goal_y - self.start_y) / (self.goal_x - self.start_x)
-            self.start_goal_intercept = self.start_y - self.start_goal_slope * self.start_x
-        else:
-            self.start_goal_slope = float('inf')  # Vertical line
-
-        self.start_goal_line_calculated = True
-
-    def on_start_goal_line(self):
-        """
-        Check if the robot is on the start-to-goal line.
-        If the line is vertical (infinite slope), check if the x-coordinate matches.
-        """
-        if self.start_goal_slope == float('inf'):
-            return abs(self.current_x - self.start_x) < 0.05  # Allow small tolerance for floating-point error
-        else:
-            expected_y = self.start_goal_slope * self.current_x + self.start_goal_intercept
-            return abs(self.current_y - expected_y) < 0.05  # Allow small tolerance
 
     def scan_callback(self, msg):
         """
@@ -182,7 +118,7 @@ class Bug2Controller(Node):
         self.rightback_dist = scan_ranges[int(225/360 * len(msg.ranges))]  # Right-back diagonal (225 degrees)
         self.leftback_dist = scan_ranges[int(135/360 * len(msg.ranges))]  # Left-back diagonal (135 degrees)
         
-        self.get_logger().info(f"Distances are [{(self.left_dist,self.leftfront_dist,self.front_dist,self.rightfront_dist,self.right_dist)}]")
+        # self.get_logger().info(f"Distances are [{(self.left_dist,self.leftfront_dist,self.front_dist,self.rightfront_dist,self.right_dist)}]")
 
         # Mode switching logic
         if self.robot_mode == "go to goal mode" and self.obstacle_detected():
@@ -199,7 +135,7 @@ class Bug2Controller(Node):
         # Continue in the current mode
         if self.robot_mode == "go to goal mode":
             self.go_to_goal()
-            self.get_logger().info(f"Robot is at {self.robot_mode}")
+            # self.get_logger().info(f"Robot is at {self.robot_mode}")
 
         elif self.robot_mode == "wall following mode":
             # Record the hit point  
@@ -207,7 +143,7 @@ class Bug2Controller(Node):
             self.hit_point_y = self.current_y
             
             self.follow_wall()
-            self.get_logger().info(f"Robot is at {self.robot_mode}")
+            # self.get_logger().info(f"Robot is at {self.robot_mode}")
 
 
     def obstacle_detected(self):
@@ -253,6 +189,8 @@ class Bug2Controller(Node):
         else:
             # If the goal is reached, move to the next waypoint
             self.get_logger().info(f"Waypoint {self.current_waypoint_index} reached.")
+            self.stop()
+            time.sleep(5)  # Wait at the waypoint
             self.current_waypoint_index += 1
             self.start_goal_line_calculated = False  # Recalculate start-goal line for the new waypoint
 
@@ -262,49 +200,7 @@ class Bug2Controller(Node):
         """
         Wall-following behavior to navigate around obstacles.
         """
-        # msg = Twist()
 
-        # Calculate the point on the start-goal 
-        # line that is closest to the current position
-        x_start_goal_line = self.current_x
-        y_start_goal_line = (
-            self.start_goal_slope * (
-            x_start_goal_line)) + (
-            self.start_goal_intercept)
-                        
-        # Calculate the distance between current position 
-        # and the start-goal line
-        distance_to_start_goal_line = math.sqrt(pow(
-                    x_start_goal_line - self.current_x, 2) + pow(
-                    y_start_goal_line - self.current_y, 2)) 
-                            
-        # If we hit the start-goal line again               
-        if distance_to_start_goal_line < 0.1:
-            
-            # Determine if we need to leave the wall and change the mode
-            # to 'go to goal'
-            # Let this point be the leave point
-            self.leave_point_x = self.current_x
-            self.leave_point_y = self.current_y
-
-            # Record the distance to the goal from the leave point
-            self.distance_to_goal_from_leave_point = math.sqrt(
-                pow(self.goal_x 
-                - self.leave_point_x, 2)
-                + pow(self.goal_y  
-                - self.leave_point_y, 2)) 
-            
-            # Is the leave point closer to the goal than the hit point?
-            # If yes, go to goal. 
-            diff = self.distance_to_goal_from_hit_point - self.distance_to_goal_from_leave_point
-            if diff > 0.25:
-                        
-                # Change the mode. Go to goal.
-                self.robot_mode = "go to goal mode"
-
-
-            # Exit this function
-            return
         
         # if self.has_obstacle:
         #         new_waypoint_x = self.obstacle_x_max - safety_margin * np.sin(self.current_yaw)
@@ -319,6 +215,9 @@ class Bug2Controller(Node):
             if obstacle_distance < 0.5:  # Adjust this threshold as needed
                 # Generate a new waypoint to the left or right of the obstacle
                 safety_margin = 0.2  # Adjust this margin as needed
+                
+                self.stop()
+                time.sleep(2)  # Wait at the waypoint
 
                 # Choose the side based on the current robot orientation and obstacle position
                 if self.current_yaw < np.pi / 2 or self.current_yaw > 3 * np.pi / 2:  # Robot facing left
@@ -335,37 +234,7 @@ class Bug2Controller(Node):
                 self.robot_mode = "go_to_goal_mode"
                 self.get_logger().info("Obstacle detected, adding new waypoint")
 ###############################################
-        # d = self.wall_following_dist
-     
-        # if self.front_dist < d:
-        #     self.wall_following_state = "1\ turn left"
-        #     self.get_logger().info(f"State is {self.wall_following_state}")
-        #     msg.angular.z = self.turning_speed
         
-        # elif self.right_dist < d:
-        #     if (self.rightfront_dist < self.dist_too_close_to_wall):
-        #         # Getting too close to the wall
-        #         self.wall_following_state = "2\ turn left"
-        #         # msg.linear.x = self.forward_speed
-        #         msg.angular.z = self.turning_speed
-        #         self.get_logger().info(f"State is {self.wall_following_state}")
-      
-        #     else:           
-        #         # Go straight ahead
-        #         self.wall_following_state = "1\ follow wall" 
-        #         msg.linear.x = self.forward_speed  
-        #         self.get_logger().info(f"State is {self.wall_following_state}")
-        
-        # elif self.leftfront_dist > d and self.front_dist > d and self.rightfront_dist > d and self.rightback_dist > 2*d:
-        #     self.wall_following_state = "1\ turn right"
-        #     msg.angular.z = -self.turning_speed
-        #     self.get_logger().info(f"State is {self.wall_following_state}")                                     
-        
-        # else:
-        #     pass
-
-        # self.velocity_publisher.publish(msg)
-
     def stop_robot(self):
         """
         Stop the robot by publishing zero velocities.
@@ -374,6 +243,7 @@ class Bug2Controller(Node):
         msg.linear.x = 0.0
         msg.angular.z = 0.0
         self.velocity_publisher.publish(msg)
+
 
 def main(args=None):
     rclpy.init(args=args)
