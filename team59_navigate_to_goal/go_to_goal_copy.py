@@ -36,12 +36,6 @@ class Bug2Controller(Node):
             '/max_obstacle_point',
             self.max_obstacle_callback,
             10)
-        
-        self.has_obstacle_sub = self.create_subscription(
-            Bool, 
-            '/has_obstacle', 
-            self.obstacle_detected,
-            10)
 
         # Publisher
         self.velocity_publisher = self.create_publisher(Twist, '/cmd_vel', 10)
@@ -191,10 +185,12 @@ class Bug2Controller(Node):
             # Switch to wall following mode if an obstacle is detected
             self.robot_mode = "wall following mode"
             self.get_logger().info("Obstacle detected!")
+            self.has_obstacle = True
 
         elif self.robot_mode == "wall following mode" and not self.obstacle_detected() and self.on_start_goal_line():
             # Switch back to go to goal mode if obstacle is cleared and we are back on the start-goal line
             self.robot_mode = "go to goal mode"
+            self.has_obstacle = False
 
         # Continue in the current mode
         if self.robot_mode == "go to goal mode":
@@ -214,8 +210,11 @@ class Bug2Controller(Node):
         """
         Return True if an obstacle is detected within the threshold distance.
         """
-        self.has_obstacle = msg
-        return self.has_obstacle
+        return (self.front_dist < self.dist_thresh_obs or 
+                self.rightfront_dist < self.dist_thresh_obs or 
+                self.leftfront_dist < self.dist_thresh_obs or 
+                self.right_dist < self.dist_thresh_obs or 
+                self.left_dist < self.dist_thresh_obs)
 
     def go_to_goal(self):
         """
