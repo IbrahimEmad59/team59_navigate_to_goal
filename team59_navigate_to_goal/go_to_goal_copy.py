@@ -134,7 +134,7 @@ class Bug2Controller(Node):
             self.get_logger().info("Obstacle detected!")
             self.has_obstacle = True
 
-        elif self.robot_mode == "wall following mode" and not self.obstacle_detected() and self.on_start_goal_line():
+        elif self.robot_mode == "wall following mode" and not self.obstacle_detected():
             # Switch back to go to goal mode if obstacle is cleared and we are back on the start-goal line
             self.robot_mode = "go to goal mode"
             self.has_obstacle = False
@@ -207,6 +207,8 @@ class Bug2Controller(Node):
         """
         Wall-following behavior to navigate around obstacles.
         """
+        # Create a Twist message for velocity control
+        msg = Twist()
         # if self.has_obstacle:
         #         new_waypoint_x = self.obstacle_x_max - safety_margin * np.sin(self.current_yaw)
         #         new_waypoint_y = self.obstacle_y_max + safety_margin * np.cos(self.current_yaw)                    
@@ -235,7 +237,7 @@ class Bug2Controller(Node):
                 # Add the new waypoint to the obstacle waypoints list
                 self.obstacle_waypoints.append((new_waypoint_x, new_waypoint_y))
 
-                self.get_logger().info("Obstacle detected, adding new waypoint")
+                self.get_logger().info(f"Obstacle detected, adding new waypoint at ({new_waypoint_x},{new_waypoint_y})")
         
             # Get the current goal (waypoint)
             self.waypoint_x, self.waypoint_y = self.obstacle_waypoints[self.current_obstacle_waypoint_index]
@@ -244,12 +246,11 @@ class Bug2Controller(Node):
             distance_to_goal = math.sqrt((self.waypoint_x - self.current_x) ** 2 + (self.waypoint_y - self.current_y) ** 2)
             angle_to_goal = math.atan2(self.waypoint_y - self.current_y, self.waypoint_x - self.current_x)
             yaw_error = angle_to_goal - self.current_yaw
+            
+            self.get_logger().info(f"Distance to new waypoint is {distance_to_goal}")
 
             # Normalize yaw_error to range [-pi, pi]
             yaw_error = (yaw_error + math.pi) % (2 * math.pi) - math.pi
-
-            # Create a Twist message for velocity control
-            msg = Twist()
 
             if distance_to_goal > self.goal_threshold:
                 # If yaw error is significant, rotate to face the goal
@@ -266,9 +267,7 @@ class Bug2Controller(Node):
                 self.current_obstacle_waypoint_index += 1
 
         self.velocity_publisher.publish(msg)
-
-        self.obstacle_waypoints = []  
-        self.current_obstacle_waypoint_index = 0
+        self.get_logger().info(f"The list of obstacle waypoints [{self.obstacle_waypoints}]")
 
         
     def stop_robot(self):
