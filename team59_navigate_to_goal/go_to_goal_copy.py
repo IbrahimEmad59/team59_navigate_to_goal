@@ -158,7 +158,9 @@ class Bug2Controller(Node):
         """
         Return True if an obstacle is detected within the threshold distance.
         """
-        return (self.front_dist < self.dist_thresh_obs)
+        return (self.front_dist < self.dist_thresh_obs or 
+                self.rightfront_dist < self.dist_thresh_obs or 
+                self.leftfront_dist < self.dist_thresh_obs)
 
     def go_to_goal(self):
         """
@@ -221,7 +223,7 @@ class Bug2Controller(Node):
 
             if obstacle_distance < 0.5 and not self.avoiding:  # Adjust this threshold as needed
                 # Generate a new waypoint to the left or right of the obstacle
-                safety_margin = 0.2  # Adjust this margin as needed
+                safety_margin = 0.25  # Adjust this margin as needed
                 
                 # self.stop_robot()
                 # time.sleep(2)  # Wait at the waypoint
