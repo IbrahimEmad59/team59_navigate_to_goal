@@ -225,7 +225,7 @@ class Bug2Controller(Node):
                 self.stop_robot()
                 time.sleep(2)  # Wait at the waypoint
                 
-                safety_margin = 0.30  # Adjust this margin as needed
+                safety_margin = 0.40  # Adjust this margin as needed
 
                 # Choose the side based on the current robot orientation and obstacle position
                 if self.current_yaw < np.pi / 2 or self.current_yaw > 3 * np.pi / 2:  # Robot facing left
