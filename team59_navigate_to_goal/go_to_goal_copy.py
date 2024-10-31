@@ -221,7 +221,7 @@ class Bug2Controller(Node):
                 obstacle_distance_max = np.sqrt((self.obstacle_x_max - self.current_x)**2 + (self.obstacle_y_max - self.current_y)**2)
                 obstacle_distance = min(obstacle_distance_min,obstacle_distance_max)
 
-                if obstacle_distance < 0.5:  # Adjust this threshold as needed
+                if self.front_dist < 0.5:  # Adjust this threshold as needed
                     # Generate a new waypoint to the left or right of the obstacle
                     safety_margin = 0.25  # Adjust this margin as needed
                     
@@ -230,11 +230,11 @@ class Bug2Controller(Node):
 
                     # Choose the side based on the current robot orientation and obstacle position
                     if self.current_yaw < np.pi / 2 or self.current_yaw > 3 * np.pi / 2:  # Robot facing left
-                        new_waypoint_x = self.obstacle_x_min - safety_margin
-                        new_waypoint_y = self.obstacle_y_min + safety_margin
+                        new_waypoint_x = self.obstacle_x_min - safety_margin * np.sin(self.current_yaw)
+                        new_waypoint_y = self.obstacle_y_min + safety_margin * np.cos(self.current_yaw)
                     else:  # Robot facing right
-                        new_waypoint_x = self.obstacle_x_min + safety_margin
-                        new_waypoint_y = self.obstacle_y_min - safety_margin
+                        new_waypoint_x = self.obstacle_x_min + safety_margin * np.sin(self.current_yaw)
+                        new_waypoint_y = self.obstacle_y_min - safety_margin * np.cos(self.current_yaw)
 
                     # Add the new waypoint to the obstacle waypoints list
                     # self.current_waypoint_index -= 1

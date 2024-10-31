@@ -74,7 +74,7 @@ class GetObjectRange(Node):
         # Extract specific groups (adjust indices as needed)
         target_groups = []
         for group in obstacle_groups:
-            if (group[0] >= 0 and group[-1] <= 15) or (group[0] >= int(330/360 * len(remapped_indices)) and group[-1] <= int(360/360 * len(remapped_indices))):
+            if (group[0] >= 0 and group[-1] <= 50) or (group[0] >= int(310/360 * len(remapped_indices)) and group[-1] <= int(360/360 * len(remapped_indices))):
                 target_groups.extend(group)
 
         if target_groups:
