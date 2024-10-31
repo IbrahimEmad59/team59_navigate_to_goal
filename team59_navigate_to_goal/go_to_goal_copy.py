@@ -221,7 +221,7 @@ class Bug2Controller(Node):
             obstacle_distance_max = np.sqrt((self.obstacle_x_max - self.current_x)**2 + (self.obstacle_y_max - self.current_y)**2)
             obstacle_distance = min(obstacle_distance_min,obstacle_distance_max)
 
-            if obstacle_distance < 0.5 and not self.avoiding:  # Adjust this threshold as needed
+            if ((self.leftfront_dist < 0.25 or self.front_dist < 0.25 or self.rightfront_dist < 0.25) and not self.avoiding):  # Adjust this threshold as needed
                 # Generate a new waypoint to the left or right of the obstacle
                 safety_margin = 0.25  # Adjust this margin as needed
                 
