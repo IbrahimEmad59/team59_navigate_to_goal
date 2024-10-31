@@ -122,8 +122,8 @@ class Bug2Controller(Node):
         self.left_dist = scan_ranges[int(90/360 * len(msg.ranges))]  # Left (90 degrees)
         self.front_dist = scan_ranges[int(0/360 * len(msg.ranges))]  # Front (0 degrees)
         self.right_dist = scan_ranges[int(270/360 * len(msg.ranges))]   # Right (270 degrees)
-        self.leftfront_dist = scan_ranges[int(45/360 * len(msg.ranges))]  # Left-front diagonal (45 degrees)
-        self.rightfront_dist = scan_ranges[int(315/360 * len(msg.ranges))]  # Right-front diagonal (315 degrees)
+        self.leftfront_dist = scan_ranges[int(30/360 * len(msg.ranges))]  # Left-front diagonal (45 degrees)
+        self.rightfront_dist = scan_ranges[int(330/360 * len(msg.ranges))]  # Right-front diagonal (315 degrees)
         self.rightback_dist = scan_ranges[int(225/360 * len(msg.ranges))]  # Right-back diagonal (225 degrees)
         self.leftback_dist = scan_ranges[int(135/360 * len(msg.ranges))]  # Left-back diagonal (135 degrees)
         
