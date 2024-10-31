@@ -231,12 +231,8 @@ class Bug2Controller(Node):
                 time.sleep(2)  # Wait at the waypoint
 
                 # Choose the side based on the current robot orientation and obstacle position
-                if self.current_yaw < np.pi / 2 or self.current_yaw > 3 * np.pi / 2:  # Robot facing left
-                    new_waypoint_x = self.obstacle_x_min - safety_margin * np.sin(self.current_yaw)
-                    new_waypoint_y = self.obstacle_y_min + safety_margin * np.cos(self.current_yaw)
-                else:  # Robot facing right
-                    new_waypoint_x = self.obstacle_x_min + safety_margin * np.sin(self.current_yaw)
-                    new_waypoint_y = self.obstacle_y_min - safety_margin * np.cos(self.current_yaw)
+                new_waypoint_x = self.obstacle_x_min - safety_margin
+                new_waypoint_y = self.obstacle_y_min + safety_margin
 
                 # Add the new waypoint to the obstacle waypoints list
                 # self.current_waypoint_index -= 1
