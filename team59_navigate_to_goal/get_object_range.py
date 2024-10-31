@@ -68,7 +68,7 @@ class GetObjectRange(Node):
             return result
 
         # Find indices of obstacles
-        closest_idxs = [i for i in range(len(remapped_indices)-1) if ranges[i] < 1 and ranges[i+1] < 1]
+        closest_idxs = [i for i in range(len(remapped_indices)-1) if ranges[i] < 0.5 and ranges[i+1] < 0.5]
         obstacle_groups = group_consecutive(closest_idxs)
 
         # Extract specific groups (adjust indices as needed)
