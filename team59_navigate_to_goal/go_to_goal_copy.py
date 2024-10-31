@@ -234,9 +234,12 @@ class Bug2Controller(Node):
 
                 self.waypoints.insert(self.current_waypoint_index, (new_waypoint_x, new_waypoint_y))
                 # self.obstacle_waypoints.append((new_waypoint_x, new_waypoint_y))
+                self.robot_mode = "go_to_goal_mode"
                 self.go_to_goal()
                 self.get_logger().info(f"Obstacle detected, adding new waypoint at ({new_waypoint_x},{new_waypoint_y})")
                 self.first_obstacle_encountered = True
+                self.avoiding = True
+
                 
         
     def stop_robot(self):
