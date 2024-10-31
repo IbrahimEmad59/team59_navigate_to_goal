@@ -46,7 +46,7 @@ class Bug2Controller(Node):
         self.right_dist = float('inf')
         self.leftfront_dist = float('inf')
         self.rightfront_dist = float('inf')
-        self.dist_thresh_obs = 0.25  # Threshold to trigger wall following
+        self.dist_thresh_obs = 0.35  # Threshold to trigger wall following
         self.forward_speed = 0.1  # Speed when moving forward
         self.turning_speed = 1.25  # Speed when turning
         self.wall_following_dist = 0.25  # Distance to maintain while following the wall
@@ -212,39 +212,32 @@ class Bug2Controller(Node):
         """
         Wall-following behavior to navigate around obstacles.
         """
-        msg = Twist()
-
         if self.has_obstacle:
             if not self.first_obstacle_encountered:
                 # Calculate the distance from the robot to the obstacle
-                obstacle_distance_min = np.sqrt((self.obstacle_x_min - self.current_x)**2 + (self.obstacle_y_min - self.current_y)**2)
-                obstacle_distance_max = np.sqrt((self.obstacle_x_max - self.current_x)**2 + (self.obstacle_y_max - self.current_y)**2)
-                obstacle_distance = min(obstacle_distance_min,obstacle_distance_max)
+                # obstacle_distance_min = np.sqrt((self.obstacle_x_min - self.current_x)**2 + (self.obstacle_y_min - self.current_y)**2)
+                # obstacle_distance_max = np.sqrt((self.obstacle_x_max - self.current_x)**2 + (self.obstacle_y_max - self.current_y)**2)
+                # obstacle_distance = min(obstacle_distance_min,obstacle_distance_max)
 
-                if self.front_dist < 0.5:  # Adjust this threshold as needed
-                    # Generate a new waypoint to the left or right of the obstacle
-                    safety_margin = 0.25  # Adjust this margin as needed
-                    
-                    self.stop_robot()
-                    time.sleep(2)  # Wait at the waypoint
+                self.stop_robot()
+                time.sleep(2)  # Wait at the waypoint
+                
+                safety_margin = 0.25  # Adjust this margin as needed
 
-                    # Choose the side based on the current robot orientation and obstacle position
-                    if self.current_yaw < np.pi / 2 or self.current_yaw > 3 * np.pi / 2:  # Robot facing left
-                        new_waypoint_x = self.obstacle_x_min - safety_margin * np.sin(self.current_yaw)
-                        new_waypoint_y = self.obstacle_y_min + safety_margin * np.cos(self.current_yaw)
-                    else:  # Robot facing right
-                        new_waypoint_x = self.obstacle_x_min + safety_margin * np.sin(self.current_yaw)
-                        new_waypoint_y = self.obstacle_y_min - safety_margin * np.cos(self.current_yaw)
+                # Choose the side based on the current robot orientation and obstacle position
+                if self.current_yaw < np.pi / 2 or self.current_yaw > 3 * np.pi / 2:  # Robot facing left
+                    new_waypoint_x = self.obstacle_x_min - safety_margin * np.sin(self.current_yaw)
+                    new_waypoint_y = self.obstacle_y_min + safety_margin * np.cos(self.current_yaw)
+                else:  # Robot facing right
+                    new_waypoint_x = self.obstacle_x_min + safety_margin * np.sin(self.current_yaw)
+                    new_waypoint_y = self.obstacle_y_min - safety_margin * np.cos(self.current_yaw)
 
-                    # Add the new waypoint to the obstacle waypoints list
-                    # self.current_waypoint_index -= 1
-                    
-                    self.waypoints.insert(self.current_waypoint_index, (new_waypoint_x, new_waypoint_y))
-                    # self.obstacle_waypoints.append((new_waypoint_x, new_waypoint_y))
-                    self.go_to_goal()
-                    self.get_logger().info(f"Obstacle detected, adding new waypoint at ({new_waypoint_x},{new_waypoint_y})")
-                    self.avoiding = True
-                    self.first_obstacle_encountered = True
+                self.waypoints.insert(self.current_waypoint_index, (new_waypoint_x, new_waypoint_y))
+                # self.obstacle_waypoints.append((new_waypoint_x, new_waypoint_y))
+                self.go_to_goal()
+                self.get_logger().info(f"Obstacle detected, adding new waypoint at ({new_waypoint_x},{new_waypoint_y})")
+                self.first_obstacle_encountered = True
+                
         
     def stop_robot(self):
         """
