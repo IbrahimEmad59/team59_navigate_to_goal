@@ -160,7 +160,9 @@ class Bug2Controller(Node):
         """
         return (self.front_dist < self.dist_thresh_obs or 
                 self.rightfront_dist < self.dist_thresh_obs or 
-                self.leftfront_dist < self.dist_thresh_obs)
+                self.leftfront_dist < self.dist_thresh_obs or 
+                self.right_dist < self.dist_thresh_obs or 
+                self.left_dist < self.dist_thresh_obs)
 
     def go_to_goal(self):
         """
@@ -221,12 +223,12 @@ class Bug2Controller(Node):
             obstacle_distance_max = np.sqrt((self.obstacle_x_max - self.current_x)**2 + (self.obstacle_y_max - self.current_y)**2)
             obstacle_distance = min(obstacle_distance_min,obstacle_distance_max)
 
-            if self.front_dist < 0.5 and not self.avoiding:  # Adjust this threshold as needed
+            if obstacle_distance < 0.5 and not self.avoiding:  # Adjust this threshold as needed
                 # Generate a new waypoint to the left or right of the obstacle
                 safety_margin = 0.25  # Adjust this margin as needed
                 
-                # self.stop_robot()
-                # time.sleep(2)  # Wait at the waypoint
+                self.stop_robot()
+                time.sleep(2)  # Wait at the waypoint
 
                 # Choose the side based on the current robot orientation and obstacle position
                 if self.current_yaw < np.pi / 2 or self.current_yaw > 3 * np.pi / 2:  # Robot facing left
