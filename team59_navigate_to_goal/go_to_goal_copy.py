@@ -88,6 +88,7 @@ class Bug2Controller(Node):
 
         self.has_obstacle = False
         self.avoiding = False
+        self.first_obstacle_encountered = False
         
         # Modes
         self.robot_mode = "go to goal mode"  # Can be "go to goal mode" or "wall following mode"
@@ -214,46 +215,36 @@ class Bug2Controller(Node):
         msg = Twist()
 
         if self.has_obstacle:
-            # Calculate the distance from the robot to the obstacle
-            obstacle_distance_max = np.sqrt((self.obstacle_x_max - self.current_x)**2 + (self.obstacle_y_max - self.current_y)**2)
-            obstacle_distance = obstacle_distance_max
+            if not self.first_obstacle_encountered:
+                # Calculate the distance from the robot to the obstacle
+                obstacle_distance_min = np.sqrt((self.obstacle_x_min - self.current_x)**2 + (self.obstacle_y_min - self.current_y)**2)
+                obstacle_distance_max = np.sqrt((self.obstacle_x_max - self.current_x)**2 + (self.obstacle_y_max - self.current_y)**2)
+                obstacle_distance = min(obstacle_distance_min,obstacle_distance_max)
 
-            if obstacle_distance < 0.5 and not self.avoiding:  # Adjust this threshold as needed
-                # Generate a new waypoint to the left or right of the obstacle
-                safety_margin = 0.25  # Adjust this margin as needed
-                
-                self.stop_robot()
-                time.sleep(2)  # Wait at the waypoint
+                if obstacle_distance < 0.5:  # Adjust this threshold as needed
+                    # Generate a new waypoint to the left or right of the obstacle
+                    safety_margin = 0.25  # Adjust this margin as needed
+                    
+                    self.stop_robot()
+                    time.sleep(2)  # Wait at the waypoint
 
-                # Choose the side based on the current robot orientation and obstacle position
-                if self.current_yaw < np.pi / 2 or self.current_yaw > 3 * np.pi / 2:  # Robot facing left
-                    new_waypoint_x = self.obstacle_x_min - safety_margin
-                    new_waypoint_y = self.obstacle_y_min + safety_margin
-                else:  # Robot facing right
-                    new_waypoint_x = self.obstacle_x_min + safety_margin
-                    new_waypoint_y = self.obstacle_y_min - safety_margin
+                    # Choose the side based on the current robot orientation and obstacle position
+                    if self.current_yaw < np.pi / 2 or self.current_yaw > 3 * np.pi / 2:  # Robot facing left
+                        new_waypoint_x = self.obstacle_x_min - safety_margin
+                        new_waypoint_y = self.obstacle_y_min + safety_margin
+                    else:  # Robot facing right
+                        new_waypoint_x = self.obstacle_x_min + safety_margin
+                        new_waypoint_y = self.obstacle_y_min - safety_margin
 
-                # Add the new waypoint to the obstacle waypoints list
-                # self.current_waypoint_index -= 1
-                
-                self.waypoints.insert(self.current_waypoint_index, (new_waypoint_x, new_waypoint_y))
-                # self.obstacle_waypoints.append((new_waypoint_x, new_waypoint_y))
-                self.go_to_goal()
-                self.get_logger().info(f"Obstacle detected, adding new waypoint at ({new_waypoint_x},{new_waypoint_y})")
-                self.avoiding = True
-        
-        if self.front_dist < self.dist_thresh_obs:
-            msg.angular.z = self.turning_speed  # Turn left
-        elif self.right_dist < self.wall_following_dist:
-            msg.linear.x = self.forward_speed
-            msg.angular.z = -self.turning_speed  # Turn right
-        elif self.left_dist < self.wall_following_dist:
-            msg.linear.x = self.forward_speed
-            msg.angular.z = self.turning_speed  # Turn left
-        else:
-            msg.linear.x = self.forward_speed
-
-        self.velocity_publisher.publish(msg)
+                    # Add the new waypoint to the obstacle waypoints list
+                    # self.current_waypoint_index -= 1
+                    
+                    self.waypoints.insert(self.current_waypoint_index, (new_waypoint_x, new_waypoint_y))
+                    # self.obstacle_waypoints.append((new_waypoint_x, new_waypoint_y))
+                    self.go_to_goal()
+                    self.get_logger().info(f"Obstacle detected, adding new waypoint at ({new_waypoint_x},{new_waypoint_y})")
+                    self.avoiding = True
+                    self.first_obstacle_encountered = True
         
     def stop_robot(self):
         """
