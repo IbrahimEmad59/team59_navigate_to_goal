@@ -205,6 +205,8 @@ class Bug2Controller(Node):
             self.current_waypoint_index += 1
             self.start_goal_line_calculated = False  # Recalculate start-goal line for the new waypoint
             self.avoiding = False
+            self.first_obstacle_encountered = False
+
 
         self.velocity_publisher.publish(msg)
 
@@ -222,7 +224,7 @@ class Bug2Controller(Node):
                 self.stop_robot()
                 time.sleep(2)  # Wait at the waypoint
                 
-                safety_margin = 0.25  # Adjust this margin as needed
+                safety_margin = 0.45  # Adjust this margin as needed
 
                 # Choose the side based on the current robot orientation and obstacle position
                 if self.current_yaw < np.pi / 2 or self.current_yaw > 3 * np.pi / 2:  # Robot facing left
