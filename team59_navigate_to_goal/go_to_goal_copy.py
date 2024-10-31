@@ -130,7 +130,7 @@ class Bug2Controller(Node):
         # self.get_logger().info(f"Distances are [{(self.left_dist,self.leftfront_dist,self.front_dist,self.rightfront_dist,self.right_dist)}]")
 
         # Mode switching logic
-        if self.robot_mode == "go to goal mode" and self.obstacle_detected():
+        if self.robot_mode == "go to goal mode" and self.obstacle_detected() and not self.avoiding:
             # Switch to wall following mode if an obstacle is detected
             self.robot_mode = "wall following mode"
             self.get_logger().info("Obstacle detected!")
