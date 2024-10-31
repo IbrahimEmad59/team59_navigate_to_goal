@@ -48,7 +48,7 @@ class Bug2Controller(Node):
         self.rightfront_dist = float('inf')
         self.dist_thresh_obs = 0.35  # Threshold to trigger wall following
         self.forward_speed = 0.1  # Speed when moving forward
-        self.turning_speed = 1.25  # Speed when turning
+        self.turning_speed = 0.7  # Speed when turning
         self.wall_following_dist = 0.25  # Distance to maintain while following the wall
         self.dist_too_close_to_wall = 0.15  # Minimum safe distance from the wall
         self.goal_threshold = 0.1  # Distance threshold to consider waypoint reached
