@@ -211,17 +211,12 @@ class Bug2Controller(Node):
         """
         Wall-following behavior to navigate around obstacles.
         """
-        # Create a Twist message for velocity control
-        # msg = Twist()
-        # if self.has_obstacle:
-        #         new_waypoint_x = self.obstacle_x_max - safety_margin * np.sin(self.current_yaw)
-        #         new_waypoint_y = self.obstacle_y_max + safety_margin * np.cos(self.current_yaw)                    
-###########################################
+        msg = Twist()
+
         if self.has_obstacle:
             # Calculate the distance from the robot to the obstacle
-            obstacle_distance_min = np.sqrt((self.obstacle_x_min - self.current_x)**2 + (self.obstacle_y_min - self.current_y)**2)
             obstacle_distance_max = np.sqrt((self.obstacle_x_max - self.current_x)**2 + (self.obstacle_y_max - self.current_y)**2)
-            obstacle_distance = min(obstacle_distance_min,obstacle_distance_max)
+            obstacle_distance = obstacle_distance_max
 
             if obstacle_distance < 0.5 and not self.avoiding:  # Adjust this threshold as needed
                 # Generate a new waypoint to the left or right of the obstacle
@@ -231,8 +226,12 @@ class Bug2Controller(Node):
                 time.sleep(2)  # Wait at the waypoint
 
                 # Choose the side based on the current robot orientation and obstacle position
-                new_waypoint_x = self.obstacle_x_min - safety_margin
-                new_waypoint_y = self.obstacle_y_min + safety_margin
+                if self.current_yaw < np.pi / 2 or self.current_yaw > 3 * np.pi / 2:  # Robot facing left
+                    new_waypoint_x = self.obstacle_x_min - safety_margin
+                    new_waypoint_y = self.obstacle_y_min + safety_margin
+                else:  # Robot facing right
+                    new_waypoint_x = self.obstacle_x_min + safety_margin
+                    new_waypoint_y = self.obstacle_y_min - safety_margin
 
                 # Add the new waypoint to the obstacle waypoints list
                 # self.current_waypoint_index -= 1
@@ -243,36 +242,18 @@ class Bug2Controller(Node):
                 self.get_logger().info(f"Obstacle detected, adding new waypoint at ({new_waypoint_x},{new_waypoint_y})")
                 self.avoiding = True
         
-        #     # Get the current goal (waypoint)
-        #     self.waypoint_x, self.waypoint_y = self.obstacle_waypoints[self.current_obstacle_waypoint_index]
+        if self.front_dist < self.dist_thresh_obs:
+            msg.angular.z = self.turning_speed  # Turn left
+        elif self.right_dist < self.wall_following_dist:
+            msg.linear.x = self.forward_speed
+            msg.angular.z = -self.turning_speed  # Turn right
+        elif self.left_dist < self.wall_following_dist:
+            msg.linear.x = self.forward_speed
+            msg.angular.z = self.turning_speed  # Turn left
+        else:
+            msg.linear.x = self.forward_speed
 
-        #     # Calculate the distance and angle to the current goal
-        #     distance_to_goal = math.sqrt((self.waypoint_x - self.current_x) ** 2 + (self.waypoint_y - self.current_y) ** 2)
-        #     angle_to_goal = math.atan2(self.waypoint_y - self.current_y, self.waypoint_x - self.current_x)
-        #     yaw_error = angle_to_goal - self.current_yaw
-            
-        #     self.get_logger().info(f"Distance to new waypoint is {distance_to_goal}")
-
-        #     # Normalize yaw_error to range [-pi, pi]
-        #     yaw_error = (yaw_error + math.pi) % (2 * math.pi) - math.pi
-
-        #     if distance_to_goal > self.goal_threshold:
-        #         # If yaw error is significant, rotate to face the goal
-        #         if abs(yaw_error) > 0.1:
-        #             msg.angular.z = self.turning_speed if yaw_error > 0 else -self.turning_speed
-        #         else:
-        #             # Move straight toward the goal
-        #             msg.linear.x = self.forward_speed
-        #     else:
-        #         # If the goal is reached, move to the next waypoint
-        #         self.get_logger().info(f"Obstacle Waypoint {self.current_obstacle_waypoint_index} reached.")
-        #         self.stop_robot()
-        #         time.sleep(5)  # Wait at the waypoint
-        #         self.current_obstacle_waypoint_index += 1
-
-        # self.velocity_publisher.publish(msg)
-        # self.get_logger().info(f"The list of obstacle waypoints [{self.obstacle_waypoints}]")
-
+        self.velocity_publisher.publish(msg)
         
     def stop_robot(self):
         """
