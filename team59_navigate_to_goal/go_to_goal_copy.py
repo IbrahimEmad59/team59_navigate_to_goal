@@ -161,9 +161,7 @@ class Bug2Controller(Node):
         """
         return (self.front_dist < self.dist_thresh_obs or 
                 self.rightfront_dist < self.dist_thresh_obs or 
-                self.leftfront_dist < self.dist_thresh_obs or 
-                self.right_dist < self.dist_thresh_obs or 
-                self.left_dist < self.dist_thresh_obs)
+                self.leftfront_dist < self.dist_thresh_obs)
 
     def go_to_goal(self):
         """
@@ -214,8 +212,11 @@ class Bug2Controller(Node):
         """
         Wall-following behavior to navigate around obstacles.
         """
+        msg = Twist()
+
         if self.has_obstacle:
             if not self.first_obstacle_encountered:
+
                 # Calculate the distance from the robot to the obstacle
                 # obstacle_distance_min = np.sqrt((self.obstacle_x_min - self.current_x)**2 + (self.obstacle_y_min - self.current_y)**2)
                 # obstacle_distance_max = np.sqrt((self.obstacle_x_max - self.current_x)**2 + (self.obstacle_y_max - self.current_y)**2)
