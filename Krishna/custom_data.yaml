@@ -1,0 +1,7 @@
+
+        path: ./data
+        train: images/train
+        val: images/val
+        nc: 6
+        names: ['empty_wall', 'left', 'right', 'do_not_enter', 'stop', 'goal']
+        
